@@ -49,7 +49,7 @@ export class GetCrmClientUseCase {
 export class MergeCrmClientsUseCase {
   constructor(@inject("CrmRepository") private repo: ICrmRepository) {}
   async execute(barbershopId: string, targetId: string, sourceIds: string[], user: CrmUser): Promise<void> {
-    await assertCrmAccess(user, barbershopId, "CRM_ANALYTICS_VIEW");
+    await assertCrmAccess(user, barbershopId, "CRM_CAMPAIGNS_MANAGE");
     await this.repo.mergeClients(barbershopId, targetId, sourceIds);
   }
 }
@@ -96,7 +96,7 @@ export class GetCrmForecastUseCase {
     productByDay.forEach((revenue, key) => weekdayProduct[new Date(`${key}T12:00:00`).getDay()].push(revenue));
     const hasProductHistory = [...productByDay.values()].some((value) => value > 0);
     const avg = (values: number[]) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
-    const allRevenue = [...revenueByDay.values()]; const mean = avg(allRevenue); const std = Math.sqrt(avg(allRevenue.map((value) => (value - mean) ** 2)));
+    const allRevenue = [...revenueByDay.values()]; const mean = avg(allRevenue); const std = allRevenue.length > 1 ? Math.sqrt(allRevenue.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (allRevenue.length - 1)) : 0;
     let forecast: Awaited<ReturnType<IWeatherProvider["getForecast"]>> = [];
     if (shop?.latitude != null && shop.longitude != null) {
       try { forecast = await this.weather.getForecast(shop.latitude, shop.longitude, Math.min(horizon, 16)); } catch { forecast = []; }

@@ -41,7 +41,8 @@ export async function countEligibleStaff(
  */
 export async function assertAppointmentBookable(
   data: ICreateAppointmentDTO,
-  db: DbClient = prisma
+  db: DbClient = prisma,
+  options?: { excludeAppointmentId?: string }
 ): Promise<{ durationMinutes: number }> {
   await assertPublicShopOperationalAccess(data.barbershopId);
 
@@ -139,6 +140,7 @@ export async function assertAppointmentBookable(
       barbershopId: data.barbershopId,
       status: "CONFIRMED",
       date: { gte: day, lt: next },
+      ...(options?.excludeAppointmentId ? { id: { not: options.excludeAppointmentId } } : {}),
     },
     select: {
       time: true,

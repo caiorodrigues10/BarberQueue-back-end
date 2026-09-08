@@ -91,10 +91,31 @@ describe("Appointments module", () => {
 
     const updated = await update.execute(
       apt.id,
-      { status: "COMPLETED" },
+      { customerName: "Pedro Atualizado" },
       ADMIN
     );
-    expect(updated.status).toBe("COMPLETED");
+    expect(updated.customerName).toBe("Pedro Atualizado");
+  });
+
+  it("rejeita transição direta para COMPLETED via update", async () => {
+    const create = new CreateAppointmentUseCase(repo as any);
+    const update = new UpdateAppointmentUseCase(repo as any);
+
+    const apt = await create.execute(
+      {
+        barbershopId: "shop-1",
+        serviceId: "svc-1",
+        customerName: "Pedro",
+        whatsapp: "5577777777777",
+        date: "2026-07-03",
+        time: "09:00",
+      },
+      ADMIN
+    );
+
+    await expect(
+      update.execute(apt.id, { status: "COMPLETED" }, ADMIN)
+    ).rejects.toThrow(/requer fluxo específico/);
   });
 
   it("cancela agendamento", async () => {

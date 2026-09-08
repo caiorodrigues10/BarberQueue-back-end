@@ -93,7 +93,7 @@ export class CrmRepository implements ICrmRepository {
     const noShows = appointments.filter((appointment: { status: string }) => appointment.status === "NO_SHOW").length;
     const attended = appointments.filter((appointment: { status: string }) => ["COMPLETED", "CHECKED_IN"].includes(appointment.status)).length;
     const attendanceBase = attended + noShows;
-    const firstTime = metrics.filter((metric) => metric.firstVisitAt && new Date(metric.firstVisitAt) >= from && new Date(metric.firstVisitAt) <= to).length;
+    const firstTime = metrics.filter((metric) => metric.firstVisitAt && metric.visits === 1 && new Date(metric.firstVisitAt) >= from && new Date(metric.firstVisitAt) <= to).length;
     const recurring = metrics.filter((metric) => metric.visits >= 2 && metric.lastVisitAt && new Date(metric.lastVisitAt) >= from && new Date(metric.lastVisitAt) <= to).length;
     const reactivated = metrics.filter((metric) => metric.daysSinceLastVisit !== null && metric.daysSinceLastVisit < 30 && metric.visits >= 2).length;
     const inactive = metrics.filter((metric) => (metric.daysSinceLastVisit ?? 0) >= 30).length;
@@ -139,7 +139,7 @@ export class CrmRepository implements ICrmRepository {
 
   async listClients(barbershopId: string, params: { page: number; limit: number; search?: string; segment?: CrmSegment; sort?: "ltv" | "lastVisit" | "outstanding"; from?: Date; to?: Date }): Promise<{ data: CrmClientMetrics[]; total: number }> {
     let records = await this.metrics(barbershopId, { from: params.from, to: params.to });
-    if (params.search) { const term = params.search.toLowerCase(); records = records.filter((item) => item.name.toLowerCase().includes(term) || item.whatsapp.includes(term.replace(/\D/g, ""))); }
+    if (params.search) { const term = params.search.toLowerCase(); const digits = term.replace(/\D/g, ""); records = records.filter((item) => item.name.toLowerCase().includes(term) || (digits.length >= 4 && item.whatsapp.replace(/\D/g, "").includes(digits))); }
     if (params.segment && params.segment !== "all") records = records.filter((item) => item.segment === params.segment);
     const sort = params.sort ?? "ltv";
     records.sort((a, b) => sort === "lastVisit" ? (new Date(b.lastVisitAt ?? 0).getTime() - new Date(a.lastVisitAt ?? 0).getTime()) : b[sort] - a[sort]);

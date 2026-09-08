@@ -4,6 +4,7 @@ import { IFiadoRepository } from "../repositories/IFiadoRepository";
 import { IBarbershopRepository } from "@/modules/barbershops/repositories/IBarbershopRepository";
 import { ISalonClientRepository } from "@/modules/clients/repositories/ISalonClientRepository";
 import { recordFiadoCreated, recordFiadoPayment } from "@/modules/crm/services/crmLedger";
+import { prisma } from "@/libs/prismaClient";
 import { enqueueWhatsApp } from "@/shared/infra/queue";
 import {
   ICreateFiadoDTO,
@@ -154,6 +155,9 @@ export class DeleteFiadoUseCase {
     }
 
     await this.fiadoRepository.delete(id);
+    await prisma.crmFinancialEvent.deleteMany({
+      where: { sourceType: "fiado", sourceId: id },
+    }).catch(() => {});
   }
 }
 
@@ -182,13 +186,6 @@ export class AddFiadoPaymentUseCase {
 
     if (fiado.status === "PAID" || fiado.status === "FORGIVEN") {
       throw new AppError("Este fiado já está encerrado", 400);
-    }
-
-    if (data.amount > fiado.remainingAmount) {
-      throw new AppError(
-        `Valor do pagamento (R$${data.amount}) maior que o saldo devedor (R$${fiado.remainingAmount})`,
-        400
-      );
     }
 
     const payment = await this.fiadoRepository.addPayment(data);
@@ -254,7 +251,7 @@ export class ChargeFiadoUseCase {
         payment
       ),
       instanceName: shop?.evolutionInstanceName?.trim() || undefined,
-      deduplicationKey: `fiado-charge:${fiado.id}:${Date.now()}`,
+      deduplicationKey: `fiado-charge:${fiado.id}:${new Date().toISOString().slice(0, 10)}`,
       notificationType: "FIADO_CHARGE",
       barbershopId: fiado.barbershopId,
       clientId: fiado.clientId ?? undefined,

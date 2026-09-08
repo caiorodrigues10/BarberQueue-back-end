@@ -1,4 +1,5 @@
 import { inject, injectable } from "tsyringe";
+import { prisma } from "@/libs/prismaClient";
 import { AppError } from "@/shared/errors/AppError";
 import { IAppointmentRepository } from "../../repositories/IAppointmentRepository";
 import { CompleteServiceUseCase } from "@/modules/shared/useCases/CompleteServiceUseCase";
@@ -32,31 +33,44 @@ export class CompleteAppointmentUseCase {
   ) {}
 
   async execute(request: CompleteAppointmentRequest) {
+    if (request.userRole !== "MASTER_ADMIN" && request.userRole !== "OWNER" && request.userRole !== "EMPLOYEE" && request.userRole !== "ADMIN") {
+      throw new AppError("Você não possui permissão para finalizar atendimentos", 403);
+    }
     const appointment = await this.appointmentRepository.findById(request.appointmentId);
     if (!appointment) throw new AppError("Agendamento não encontrado", 404);
     if (appointment.barbershopId !== request.barbershopId) throw new AppError("Agendamento não pertence a este salão", 403);
     if (appointment.status === "COMPLETED") throw new AppError("Este agendamento já foi finalizado", 409);
     if (appointment.status === "CANCELLED") throw new AppError("Não é possível finalizar um agendamento cancelado", 400);
 
-    await this.completeService.execute({
-      barbershopId: request.barbershopId,
-      serviceName: appointment.serviceName,
-      serviceId: appointment.serviceId,
-      staffUserId: request.userId,
-      finalPrice: request.finalPrice ?? appointment.servicePrice ?? undefined,
-      paymentMethod: request.paymentMethod,
-      commissionSplits: request.commissionSplits,
-      customerName: appointment.customerName,
-      whatsapp: appointment.whatsapp,
-      clientId: appointment.clientId,
-      sourceType: "APPOINTMENT",
-      sourceId: appointment.id,
-      skipRecordCompletion: true,
-    });
+    const [affected] = await prisma.$executeRaw`
+      UPDATE appointments SET status = 'COMPLETED', "updatedAt" = NOW()
+      WHERE id = ${request.appointmentId}::uuid
+        AND status NOT IN ('COMPLETED', 'CANCELLED')
+    `.then((count: number) => [count]) as [number];
+    if (affected === 0) throw new AppError("Este agendamento já foi finalizado ou cancelado", 409);
 
-    const updated = await this.appointmentRepository.update(appointment.id, {
-      status: "COMPLETED",
-    });
+    try {
+      await this.completeService.execute({
+        barbershopId: request.barbershopId,
+        serviceName: appointment.serviceName,
+        serviceId: appointment.serviceId,
+        staffUserId: request.userId,
+        finalPrice: request.finalPrice ?? appointment.servicePrice ?? undefined,
+        paymentMethod: request.paymentMethod,
+        commissionSplits: request.commissionSplits,
+        customerName: appointment.customerName,
+        whatsapp: appointment.whatsapp,
+        clientId: appointment.clientId,
+        sourceType: "APPOINTMENT",
+        sourceId: appointment.id,
+      });
+    } catch (error) {
+      await prisma.appointment.update({
+        where: { id: request.appointmentId },
+        data: { status: appointment.status },
+      }).catch(() => undefined);
+      throw error;
+    }
 
     if (request.retailSale) {
       await this.productCatalog.createSale(request.barbershopId, {
@@ -91,6 +105,6 @@ export class CompleteAppointmentUseCase {
     }
 
     publishRealtime(request.barbershopId, "appointments:changed");
-    return updated;
+    return { ...appointment, status: "COMPLETED" as const };
   }
 }

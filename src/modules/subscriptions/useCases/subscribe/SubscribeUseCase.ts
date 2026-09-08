@@ -9,6 +9,7 @@ import { IPaymentResponseDTO } from "@/modules/payments/dtos/IPaymentDTO";
 import { ISubscribeDTO, ISubscriptionResponseDTO } from "../../dtos/ISubscriptionDTO";
 import { buildSubscriptionResponse } from "../../utils/subscriptionMapper";
 import { TRIAL_DAYS, billingPeriodDays } from "@/shared/constants/subscription";
+import { applyTransition } from "@/shared/services/paymentStateMachine";
 import { Prisma } from "@prisma/client";
 import { getModuleLogger } from "@/shared/utils/logger";
 import { assertPaymentProviderEnabled } from "@/config/paymentProviders";
@@ -97,7 +98,7 @@ export class SubscribeUseCase {
           existing?.status === "TRIALING" || existing?.status === "ACTIVE";
 
         const dueDate = new Date();
-        dueDate.setDate(dueDate.getDate() + 30);
+        dueDate.setDate(dueDate.getDate() + billingPeriodDays(plan.billingCycle));
 
         const pendingUntilWebhook =
           data.paymentMethod === "pix" ||
@@ -106,13 +107,17 @@ export class SubscribeUseCase {
         const trialEnd = new Date(lockedBarbershop.createdAt);
         trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
         const isInCalendarTrial = new Date() <= trialEnd;
-        const initialStatus = keepAccessUntilPaid
-          ? existing!.status
-          : isInCalendarTrial
-            ? "TRIALING"
-          : pendingUntilWebhook
-            ? "PAST_DUE"
-            : "ACTIVE";
+
+        let initialStatus: string;
+        if (keepAccessUntilPaid) {
+          initialStatus = existing!.status;
+        } else if (isInCalendarTrial) {
+          initialStatus = "TRIALING";
+        } else if (pendingUntilWebhook) {
+          initialStatus = "PENDING";
+        } else {
+          initialStatus = applyTransition("TRIALING", "PAYMENT_APPROVED", { isTrialPeriod: false });
+        }
 
         const subscription = await tx.subscription.upsert({
           where: { barbershopId: data.barbershopId },
@@ -372,6 +377,7 @@ export class SubscribeUseCase {
       price: number;
       description: string | null;
       abacateProductId: string | null;
+      billingCycle: "MONTHLY" | "YEARLY";
     };
     data: ISubscribeDTO;
     barbershopId: string;
@@ -460,6 +466,7 @@ export class SubscribeUseCase {
       price: number;
       description: string | null;
       abacateProductId: string | null;
+      billingCycle: "MONTHLY" | "YEARLY";
     };
     data: ISubscribeDTO;
     barbershopId: string;
@@ -481,7 +488,7 @@ export class SubscribeUseCase {
     });
 
     const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30);
+    dueDate.setDate(dueDate.getDate() + billingPeriodDays(plan.billingCycle));
     const dueDateStr = dueDate.toISOString().slice(0, 10);
 
     const isCard = data.asaasBillingType === "CREDIT_CARD";

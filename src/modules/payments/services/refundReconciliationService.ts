@@ -53,12 +53,6 @@ export async function reconcilePendingRefunds(limit = 25): Promise<{
           },
         }),
       ];
-      if (subscription) {
-        operations.push(prisma.invoice.updateMany({
-          where: { subscriptionId: subscription.id, status: { in: ["PENDING", "OVERDUE"] } },
-          data: { status: "CANCELLED" },
-        }));
-      }
       if (invoiceId) {
         operations.push(prisma.invoice.updateMany({
           where: { id: invoiceId },

@@ -130,25 +130,43 @@ export function planPurchaseLines(
     throw new AppError("Informe ao menos um item na compra", 400);
   }
   const byId = new Map(products.map((p) => [p.id, p]));
-  return items.map((item) => {
-    const product = byId.get(item.productId);
-    if (!product || product.barbershopId !== barbershopId) {
-      throw new AppError("Produto não encontrado neste salão", 404);
-    }
+
+  const merged = new Map<string, { quantity: number; totalCost: number; totalQty: number }>();
+  for (const item of items) {
     if (item.quantity <= 0 || item.unitCost < 0) {
       throw new AppError("Quantidade e custo da compra devem ser positivos", 400);
     }
-    const stockAfter = nextStockQty(product.stockQty, item.quantity, false);
+    const prev = merged.get(item.productId);
+    const qty = (prev?.quantity ?? 0) + item.quantity;
+    const totalCost = (prev?.totalCost ?? 0) + item.unitCost * item.quantity;
+    merged.set(item.productId, { quantity: qty, totalCost, totalQty: qty });
+  }
+
+  let lastStockAfter = new Map<string, number>();
+  let lastAvgCost = new Map<string, number>();
+
+  return [...merged.entries()].map(([productId, entry]) => {
+    const product = byId.get(productId);
+    if (!product || product.barbershopId !== barbershopId) {
+      throw new AppError("Produto não encontrado neste salão", 404);
+    }
+    const avgUnitCost = roundMoney(entry.totalCost / entry.quantity);
+    const prevStock = lastStockAfter.get(productId) ?? product.stockQty;
+    const prevAvgCost = lastAvgCost.get(productId) ?? product.averageCost;
+    const stockAfter = nextStockQty(prevStock, entry.quantity, false);
+    const averageCostAfter = weightedAverageCost(prevStock, prevAvgCost, entry.quantity, avgUnitCost);
+    lastStockAfter.set(productId, stockAfter);
+    lastAvgCost.set(productId, averageCostAfter);
     return {
       productId: product.id,
       name: product.name,
-      quantity: item.quantity,
+      quantity: entry.quantity,
       unitPrice: 0,
-      unitCost: roundMoney(item.unitCost),
+      unitCost: avgUnitCost,
       trackStock: product.trackStock,
       stockBefore: product.stockQty,
       stockAfter,
-      averageCostAfter: weightedAverageCost(product.stockQty, product.averageCost, item.quantity, item.unitCost),
+      averageCostAfter,
     };
   });
 }

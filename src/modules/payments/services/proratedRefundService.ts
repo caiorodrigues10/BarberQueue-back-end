@@ -123,8 +123,10 @@ export async function issueProratedRefund(
     },
   });
 
+  let providerRefundId: string | undefined;
+  let providerSucceeded = false;
+
   try {
-    let providerRefundId: string;
     let providerStatus: string;
 
     if (payment.provider === "ABACATEPAY") {
@@ -181,6 +183,8 @@ export async function issueProratedRefund(
       throw new AppError(`Provedor de pagamento não suportado: ${payment.provider}`, 400);
     }
 
+    providerSucceeded = true;
+
     await prisma.$transaction([
       prisma.refund.update({
         where: { id: refund.id },
@@ -227,12 +231,17 @@ export async function issueProratedRefund(
     const message =
       error instanceof AppError ? error.message : error?.message ?? "Erro desconhecido";
 
+    const refundStatus = providerSucceeded ? "RECONCILIATION_REQUIRED" : "FAILED";
     await prisma.refund
       .update({
         where: { id: refund.id },
-        data: { status: "FAILED", errorMessage: message },
+        data: {
+          status: refundStatus,
+          ...(providerSucceeded ? { providerRefundId: providerRefundId! } : {}),
+          errorMessage: message,
+        },
       })
-      .catch((err: unknown) => logger.error({ err }, 'Failed to update refund status to FAILED'));
+      .catch((err: unknown) => logger.error({ err }, 'Failed to update refund status'));
 
     await prisma.adminNotification
       .create({

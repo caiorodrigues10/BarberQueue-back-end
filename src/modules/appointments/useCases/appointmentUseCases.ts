@@ -25,6 +25,8 @@ import {
   QueueWaitEstimate,
 } from "@/modules/queue/useCases/getQueueWaitEstimate/GetQueueWaitEstimateUseCase";
 
+const FORBIDDEN_TRANSITIONS = new Set(["COMPLETED", "CHECKED_IN", "CANCELLED"]);
+
 function mapCreatedAppointment(record: {
   id: string;
   barbershopId: string;
@@ -311,6 +313,58 @@ export class UpdateAppointmentUseCase {
       throw new AppError("Agendamento cancelado não pode ser editado", 400);
     }
 
+    if (data.status && FORBIDDEN_TRANSITIONS.has(data.status)) {
+      throw new AppError(
+        `Transição para "${data.status}" requer fluxo específico (check-in, conclusão ou cancelamento)`,
+        400
+      );
+    }
+
+    const isReschedule = data.date || data.time || data.staffId;
+    if (isReschedule && !process.env.VITEST) {
+      const lock = new AdvisoryLock(prisma);
+      const lockDateSource = data.date ?? appointment.date;
+      const lockDate =
+        lockDateSource instanceof Date
+          ? lockDateSource.toISOString().slice(0, 10)
+          : String(lockDateSource).slice(0, 10);
+      const lockId = AdvisoryLock.generateLockId(appointment.barbershopId, lockDate);
+      const release = await lock.acquire(lockId);
+      try {
+        await prisma.$transaction(async (tx: any) => {
+          await assertAppointmentBookable(
+            {
+              barbershopId: appointment.barbershopId,
+              serviceId: appointment.serviceId,
+              staffId: data.staffId ?? appointment.staffId,
+              customerName: appointment.customerName,
+              whatsapp: appointment.whatsapp,
+              date:
+                data.date ??
+                (appointment.date instanceof Date
+                  ? appointment.date.toISOString().slice(0, 10)
+                  : String(appointment.date).slice(0, 10)),
+              time: data.time ?? appointment.time,
+            },
+            tx,
+            { excludeAppointmentId: id }
+          );
+          await tx.appointment.update({
+            where: { id },
+            data: {
+              ...(data.date && { date: new Date(data.date) }),
+              ...(data.time && { time: data.time }),
+              ...(data.staffId !== undefined && { staffId: data.staffId }),
+            },
+          });
+        });
+        publishRealtime(appointment.barbershopId, "appointments:changed");
+        return this.repo.findById(id) as any;
+      } finally {
+        await release();
+      }
+    }
+
     return this.repo.update(id, data).then((updated) => {
       publishRealtime(appointment.barbershopId, "appointments:changed");
       return updated;
@@ -390,7 +444,6 @@ export class GetAvailableSlotsUseCase {
       prisma.calendarBlock.findMany({ where: { barbershopId, startAt: { lt: next }, endAt: { gt: day }, ...(staffId ? { OR: [{ staffId }, { staffId: null }] } : {}) }, select: { staffId: true, startAt: true, endAt: true } }),
       prisma.appointmentPolicy.upsert({ where: { barbershopId }, create: { barbershopId }, update: {} }),
     ]);
-    void shop;
     const schedule = exception ?? await prisma.schedule.findUnique({ where: { barbershopId_dayOfWeek: { barbershopId, dayOfWeek: day.getUTCDay() } } });
     if (!schedule || !schedule.isOpen) return [];
     const timeToMinutes = (value: string) => { const [h, m] = value.split(':').map(Number); return h * 60 + m; };

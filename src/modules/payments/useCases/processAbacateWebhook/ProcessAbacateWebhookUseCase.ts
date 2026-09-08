@@ -180,6 +180,8 @@ export class ProcessAbacateWebhookUseCase {
     const localPayment = await this.resolveLocalPayment(payload);
     if (!localPayment) return;
 
+    if (localPayment.status === "refunded" || localPayment.status === "charged_back") return;
+
     const status =
       event === "checkout.refunded"
         ? "refunded"

@@ -62,7 +62,7 @@ export class FiadoRepository implements IFiadoRepository {
 
     if (query.overdue === true) {
       where.dueDate = { lt: new Date() };
-      where.status = { in: ["PENDING", "PARTIAL"] };
+      if (!query.status) where.status = { in: ["PENDING", "PARTIAL"] };
     }
 
     if (query.search) {
@@ -87,6 +87,18 @@ export class FiadoRepository implements IFiadoRepository {
   }
 
   async update(id: string, data: IUpdateFiadoDTO): Promise<IFiadoResponseDTO> {
+    if (data.amount !== undefined && data.amount <= 0) {
+      throw new AppError("O valor deve ser maior que zero", 400);
+    }
+
+    const existing = data.amount !== undefined ? await prisma.fiado.findUnique({ where: { id }, select: { paidAmount: true, creditAdjustedAmount: true } }) : null;
+    if (existing && data.amount !== undefined) {
+      const totalPaid = existing.paidAmount + (existing.creditAdjustedAmount ?? 0);
+      if (data.amount < totalPaid) {
+        throw new AppError("O valor total não pode ser menor que já foi pago/creditado", 400);
+      }
+    }
+
     const record = await prisma.fiado.update({
       where: { id },
       data: {
@@ -102,46 +114,70 @@ export class FiadoRepository implements IFiadoRepository {
   }
 
   async delete(id: string): Promise<void> {
+    const payments = await prisma.fiadoPayment.count({ where: { fiadoId: id } });
+    if (payments > 0) {
+      throw new AppError("Não é possível excluir um fiado que já possui pagamentos registrados", 400);
+    }
     await prisma.fiado.delete({ where: { id } });
   }
 
   async addPayment(data: ICreateFiadoPaymentDTO): Promise<IFiadoPaymentResponseDTO> {
-    const fiado = await prisma.fiado.findUniqueOrThrow({
-      where: { id: data.fiadoId },
-      select: { originalAmount: true, paidAmount: true, creditAdjustedAmount: true, status: true },
+    return prisma.$transaction(async (tx: any) => {
+      const rows = await tx.$queryRaw<
+        Array<{
+          id: string;
+          originalAmount: unknown;
+          paidAmount: unknown;
+          creditAdjustedAmount: unknown;
+          status: string;
+        }>
+      >`
+        SELECT id, "originalAmount", "paidAmount", "creditAdjustedAmount", status
+        FROM fiados
+        WHERE id = ${data.fiadoId}::uuid
+        FOR UPDATE
+      `;
+      const fiado = rows[0];
+      if (!fiado) throw new AppError("Fiado não encontrado", 404);
+
+      const status = fiado.status as FiadoStatus;
+      if (status === "PAID" || status === "FORGIVEN") {
+        throw new AppError("Este fiado já está encerrado.", 400);
+      }
+
+      const originalAmount = Number(fiado.originalAmount);
+      const paidAmount = Number(fiado.paidAmount);
+      const creditAdjustedAmount = Number(fiado.creditAdjustedAmount ?? 0);
+
+      const remaining = originalAmount - paidAmount - creditAdjustedAmount;
+      if (data.amount - remaining > 0.01) {
+        throw new AppError("Valor do pagamento maior que o saldo devedor", 400);
+      }
+
+      const newPaidAmount = paidAmount + data.amount;
+      const newStatus: FiadoStatus =
+        newPaidAmount + creditAdjustedAmount >= originalAmount ? "PAID" : "PARTIAL";
+
+      const [payment] = await Promise.all([
+        tx.fiadoPayment.create({
+          data: {
+            fiadoId: data.fiadoId,
+            amount: data.amount,
+            notes: data.notes ?? null,
+            registeredById: data.registeredById,
+          },
+        }),
+        tx.fiado.update({
+          where: { id: data.fiadoId },
+          data: {
+            paidAmount: newPaidAmount,
+            status: newStatus,
+          },
+        }),
+      ]);
+
+      return mapPaymentToDTO(payment);
     });
-
-    if (fiado.status === "PAID" || fiado.status === "FORGIVEN") {
-      throw new AppError("Este fiado já está encerrado.", 400);
-    }
-
-    const remaining = fiado.originalAmount - fiado.paidAmount - (fiado.creditAdjustedAmount ?? 0);
-    if (data.amount > remaining + 0.001) {
-      throw new AppError("Valor do pagamento maior que o saldo devedor", 400);
-    }
-    const newPaidAmount = fiado.paidAmount + data.amount;
-    const newStatus: FiadoStatus =
-      newPaidAmount + (fiado.creditAdjustedAmount ?? 0) >= fiado.originalAmount ? "PAID" : "PARTIAL";
-
-    const [payment] = await prisma.$transaction([
-      prisma.fiadoPayment.create({
-        data: {
-          fiadoId: data.fiadoId,
-          amount: data.amount,
-          notes: data.notes ?? null,
-          registeredById: data.registeredById,
-        },
-      }),
-      prisma.fiado.update({
-        where: { id: data.fiadoId },
-        data: {
-          paidAmount: newPaidAmount,
-          status: newStatus,
-        },
-      }),
-    ]);
-
-    return mapPaymentToDTO(payment);
   }
 
   async getSummary(barbershopId: string): Promise<IFiadoSummary> {

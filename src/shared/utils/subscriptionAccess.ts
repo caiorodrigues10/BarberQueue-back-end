@@ -53,7 +53,14 @@ export function subscriptionGrantsAccess(
 		subscription.endDate != null &&
 		subscription.endDate > now
 
-	if (subscription.status === 'ACTIVE' || hasPaidPeriodLeft) {
+	if (subscription.status === 'ACTIVE') {
+		if (subscription.endDate != null && subscription.endDate <= now) {
+			return { allowed: false, cardRequired: false }
+		}
+		return { allowed: true, cardRequired: false }
+	}
+
+	if (hasPaidPeriodLeft) {
 		return { allowed: true, cardRequired: false }
 	}
 

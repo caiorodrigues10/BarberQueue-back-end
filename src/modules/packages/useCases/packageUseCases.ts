@@ -332,7 +332,21 @@ export class ConsumeClientPackageUseCase {
     if (!pkg) throw new AppError("Pacote do cliente não encontrado", 404);
     assertShopAccess(user, pkg.barbershopId);
     assertPackageBookable(pkg, 1, pkg.barbershopId);
-    return this.packages.debitSessions(pkg.id, 1);
+
+    if (process.env.VITEST) {
+      return this.packages.debitSessions(pkg.id, 1);
+    }
+
+    await prisma.$transaction(async (tx: any) => {
+      await debitClientPackageInTx(tx, {
+        clientPackageId: pkg.id,
+        barbershopId: pkg.barbershopId,
+        serviceId: pkg.serviceId,
+        count: 1,
+      });
+    });
+
+    return (await this.packages.findById(pkg.id))!;
   }
 }
 

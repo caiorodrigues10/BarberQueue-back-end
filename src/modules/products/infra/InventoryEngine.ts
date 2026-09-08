@@ -68,6 +68,7 @@ export class InventoryEngine {
     discount?: number;
     idempotencyKey: string;
     allowPriceOverride: boolean;
+    allowDiscount?: boolean;
     customerName?: string;
     whatsapp?: string;
   }) {
@@ -91,6 +92,9 @@ export class InventoryEngine {
     }
     if (input.paymentMethod === "fiado" && !input.clientId) {
       throw new AppError("Venda fiada exige cliente identificado", 400);
+    }
+    if ((input.discount ?? 0) > 0 && !input.allowDiscount) {
+      throw new AppError("Você não possui permissão para conceder descontos", 403);
     }
 
     return prisma.$transaction(async (tx: any) => {
@@ -213,13 +217,16 @@ export class InventoryEngine {
       if (sale.status === "CANCELED") throw new AppError("Esta venda não foi concluída", 400);
 
       const refundLines = [];
+      const cumulativeRefund = new Map<string, number>();
       for (const item of input.items) {
         const line = sale.lines.find((row: { productId: string }) => row.productId === item.productId);
         if (!line) throw new AppError("Item não pertence a esta venda", 400);
-        const available = roundMoney(line.quantity - line.refundedQty);
+        const alreadyRefunded = cumulativeRefund.get(line.productId) ?? 0;
+        const available = roundMoney(line.quantity - line.refundedQty - alreadyRefunded);
         if (item.quantity - available > 0.0001) {
           throw new AppError(`Não é possível estornar mais que ${available} de ${line.productName}`, 400);
         }
+        cumulativeRefund.set(line.productId, alreadyRefunded + item.quantity);
         refundLines.push({
           line,
           quantity: item.quantity,
@@ -228,7 +235,8 @@ export class InventoryEngine {
         });
       }
 
-      const financialGross = roundMoney(refundLines.reduce((sum, row) => sum + row.unitPrice * row.quantity, 0));
+      const discountRatio = sale.subtotal > 0 ? sale.total / sale.subtotal : 1;
+      const financialGross = roundMoney(refundLines.reduce((sum, row) => sum + row.unitPrice * row.quantity * discountRatio, 0));
       let financialRefund = financialGross;
       let outstandingCredit = 0;
 

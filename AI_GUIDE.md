@@ -1,12 +1,23 @@
-# 🤖 AI_GUIDE.md — Guia Completo para IAs no Projeto AgendAI
+# 🤖 AI_GUIDE.md — Guia histórico do Backend AgendAI
 
-> **Monorepo:** para visão geral frontend + backend, gaps conhecidos e roadmap, leia primeiro [`../AGENTS.md`](../AGENTS.md) na raiz do repositório.
+> **Manual canônico (obrigatório):** [`AGENTS.md`](./AGENTS.md) + inventários em [`docs/agents/`](./docs/agents/).
 >
-> Este documento é o guia **detalhado do backend**. Leia-o **completamente** antes de escrever qualquer linha de código no `agendai-back-end`.
+> Este arquivo permanece como material de apoio. **Em qualquer conflito** (versão do Prisma, pagamentos, scripts, CSS, testes), prevalece o `AGENTS.md` e os inventários.
+>
+> Índice do workspace (opcional): [`../AGENTS.md`](../AGENTS.md) — não duplica inventários.
+
+**Correções factuais em relação a trechos antigos deste guia:**
+
+- Prisma no `package.json`: **6.4.0** (não 7.x).
+- Pagamentos implementados: **Asaas**, **AbacatePay** e **Mercado Pago** (habilitação por env).
+- WhatsApp atual: **Evolution API** (Z-API substituída na implementação).
+- Não há script `npm run lint` no backend.
+- `test:coverage` não configura provider de coverage no `vitest.config.mts`.
 
 ---
 
 ## 📋 Índice
+
 
 1. [Visão Geral do Projeto](#1-visão-geral-do-projeto)
 2. [Stack e Versões](#2-stack-e-versões)
@@ -50,7 +61,7 @@
 | **Node.js** | 22 | LTS obrigatório |
 | **TypeScript** | 5.x | `strict` não habilitado, mas evite `any` desnecessário |
 | **Fastify** | 4.x | **Não usar Express**. Rotas com `preHandler` array |
-| **Prisma** | 7.x | Driver `pg` (não `node-postgres` direto). Adapter `PrismaPg` |
+| **Prisma** | 6.4.x | Driver `pg` via adapter `PrismaPg`. Ver `package.json` (não assumir 7.x) |
 | **PostgreSQL** | 16 | UUID v4 como PK em todos os modelos |
 | **Zod** | 3.x | Toda validação de entrada usa Zod |
 | **TSyringe** | 4.x | Injeção de dependências com `@inject` e `@injectable` |

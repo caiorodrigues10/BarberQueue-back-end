@@ -3,6 +3,14 @@
  * Foco em agendamentos e regras de negócio de salão.
  */
 
+function ymdInTimeZone(date: Date, tz: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+  const y = parts.find((p) => p.type === 'year')?.value ?? '1970';
+  const m = parts.find((p) => p.type === 'month')?.value ?? '01';
+  const d = parts.find((p) => p.type === 'day')?.value ?? '01';
+  return `${y}-${m}-${d}`;
+}
+
 /** Checa se a string é uma data calendário válida (YYYY-MM-DD) e corresponde a um Date real. */
 export function isValidDate(dateStr: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
@@ -14,18 +22,17 @@ export function isValidDate(dateStr: string): boolean {
 /** Checa se a data é hoje ou futuro (em relação ao fuso informado). */
 export function isNotPast(dateStr: string, tz = 'America/Sao_Paulo'): boolean {
   if (!isValidDate(dateStr)) return false;
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const today = ymdInTimeZone(new Date(), tz);
   return dateStr >= today;
 }
 
 /** Checa se a data não é muito distante no futuro (máx N dias a partir de hoje). */
 export function isWithinHorizon(dateStr: string, maxDays = 60, tz = 'America/Sao_Paulo'): boolean {
   if (!isValidDate(dateStr)) return false;
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
-  const maxDate = new Date(now);
-  maxDate.setDate(maxDate.getDate() + maxDays);
-  const maxStr = `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`;
+  const todayStr = ymdInTimeZone(new Date(), tz);
+  const [ty, tm, td] = todayStr.split('-').map(Number);
+  const maxDate = new Date(Date.UTC(ty, tm - 1, td + maxDays));
+  const maxStr = maxDate.toISOString().slice(0, 10);
   return dateStr <= maxStr;
 }
 
@@ -48,8 +55,8 @@ export function isBusinessHour(timeStr: string): boolean {
 export function addMinutes(timeStr: string, minutes: number): string {
   const [h, m] = timeStr.split(':').map(Number);
   const total = h * 60 + m + minutes;
-  const nh = Math.floor(total / 60) % 24;
-  const nm = total % 60;
+  const nh = ((Math.floor(total / 60) % 24) + 24) % 24;
+  const nm = ((total % 60) + 60) % 60;
   return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`;
 }
 

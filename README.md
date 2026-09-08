@@ -1,6 +1,8 @@
 # 💈 AgendAI — Backend API
 
-API REST completa para gestão de barbearias: fila digital, agendamentos, fiado, despesas, pagamentos via Mercado Pago, assinaturas de planos e painel administrativo.
+API REST para gestão de salões/barbearias: fila digital, agendamentos, CRM, pacotes, produtos/estoque, fiado, despesas, comissões, assinaturas (Asaas / AbacatePay / Mercado Pago), WhatsApp (Evolution), e painel administrativo.
+
+> **Manual canônico para IAs:** [`AGENTS.md`](./AGENTS.md) · inventários em [`docs/agents/`](./docs/agents/) · `npm run docs:check`
 
 ---
 

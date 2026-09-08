@@ -7,7 +7,10 @@ import { ICommissionRepository } from "@/modules/commissions/repositories/ICommi
 import { ISalonClientRepository } from "@/modules/clients/repositories/ISalonClientRepository";
 import { IFiadoRepository } from "@/modules/fiado/repositories/IFiadoRepository";
 import { enqueueWhatsApp } from "@/shared/infra/queue";
-import { recordFiadoCreated, recordQueueCompletion } from "@/modules/crm/services/crmLedger";
+import { recordFiadoCreated, recordQueueCompletion, recordAppointmentCompletion } from "@/modules/crm/services/crmLedger";
+import { getModuleLogger } from "@/shared/utils/logger";
+
+const logger = getModuleLogger('services:complete');
 
 type CommissionSplit = { professionalId: string; percentage: number };
 
@@ -60,6 +63,8 @@ export class CompleteServiceUseCase {
       if (expected > 0) resolvedSplits = [{ professionalId: input.staffUserId, percentage: expected }];
     }
 
+    if (completionPrice < 0) throw new AppError("Informe o valor final recebido para calcular a comissao", 400);
+
     if (resolvedSplits) {
       const expected = service?.commissionPercent ?? 0;
       const total = resolvedSplits.reduce((sum, split) => sum + split.percentage, 0);
@@ -68,7 +73,6 @@ export class CompleteServiceUseCase {
       if (new Set(ids).size !== ids.length) throw new AppError("Cada profissional so pode aparecer uma vez na divisao", 400);
       const professionals = await this.userRepository.listActiveByBarbershop(input.barbershopId, ids);
       if (professionals.length !== ids.length) throw new AppError("Um dos profissionais nao pertence a este salao", 400);
-      if (completionPrice < 0) throw new AppError("Informe o valor final recebido para calcular a comissao", 400);
     }
 
     let clientId = input.clientId ?? null;
@@ -76,7 +80,7 @@ export class CompleteServiceUseCase {
       try {
         const client = await this.salonClients.upsertFromVisit(input.barbershopId, input.customerName, input.whatsapp);
         clientId = client?.id ?? clientId;
-      } catch { /* CRM nao bloqueia */ }
+      } catch (err) { logger.warn({ err, barbershopId: input.barbershopId }, "CRM client upsert failed — continuing without clientId"); }
     }
 
     if (isFiado && input.customerName && input.whatsapp) {
@@ -95,7 +99,13 @@ export class CompleteServiceUseCase {
     }
 
     if (!input.skipRecordCompletion) {
-      try { await recordQueueCompletion(input.sourceId); } catch { /* ledger nao bloqueia */ }
+      try {
+        if (input.sourceType === "APPOINTMENT") {
+          await recordAppointmentCompletion(input.sourceId);
+        } else {
+          await recordQueueCompletion(input.sourceId);
+        }
+      } catch (err) { logger.warn({ err }, "CRM ledger recording failed — continuing"); }
     }
 
     return { completionPrice, resolvedSplits, clientId };

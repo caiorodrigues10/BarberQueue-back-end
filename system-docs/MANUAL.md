@@ -1,5 +1,8 @@
 # AgendAI Back‑end — Manual do Sistema
 
+> **Manual canônico para IAs:** [`../AGENTS.md`](../AGENTS.md) e [`../docs/agents/`](../docs/agents/).
+> Este MANUAL é onboarding humano/arquitetura. Em conflito factual, prevalece o `AGENTS.md`.
+
 Este manual documenta a arquitetura, a estrutura de pastas, os padrões e o fluxo das requisições do back‑end do AgendAI. Ele serve tanto para onboard de novos(as) desenvolvedores(as) quanto para agentes de IA que precisem navegar e estender o projeto com segurança.
 
 ## Visão Geral

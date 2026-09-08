@@ -5,6 +5,7 @@ import { InventoryEngine } from "../infra/InventoryEngine";
 import {
   assertProductPermission,
   canOverrideProductPrice,
+  canGiveDiscount,
   canSeeProductCosts,
   ProductActor,
 } from "../permissions";
@@ -69,18 +70,18 @@ export class ProductCatalogUseCase {
             AND "stockQty" <= "minStock"
         `,
       ]);
-      const ids = idRows.map((row) => row.id);
+      const ids = idRows.map((row: { id: string }) => row.id);
       const rows = ids.length
         ? await prisma.product.findMany({
             where: { id: { in: ids } },
             include: { category: true },
           })
         : [];
-      const order = new Map(ids.map((id, index) => [id, index]));
-      rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+      const order = new Map<string, number>(ids.map((id: string, index: number) => [id, index]));
+      rows.sort((a: { id: string }, b: { id: string }) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
       const total = Number(countRows[0]?.count ?? 0);
       return {
-        data: rows.map((row) => stripCost(row, showCost)),
+        data: rows.map((row: { averageCost?: number }) => stripCost(row, showCost)),
         total,
       };
     }
@@ -260,6 +261,7 @@ export class ProductCatalogUseCase {
       discount: body.discount,
       idempotencyKey: body.idempotencyKey || `walkin:${crypto.randomUUID()}`,
       allowPriceOverride: canOverrideProductPrice(user, perms),
+      allowDiscount: canGiveDiscount(user, perms),
       customerName: body.customerName,
       whatsapp: body.whatsapp,
     });
@@ -320,17 +322,17 @@ export class ProductCatalogUseCase {
       _sum: { total: true },
       _count: { id: true },
     });
-    const staffIds = byStaffRaw.map((row) => row.soldById);
+    const staffIds = byStaffRaw.map((row: { soldById: string }) => row.soldById);
     const staffRows = staffIds.length
       ? await prisma.user.findMany({ where: { id: { in: staffIds } }, select: { id: true, name: true } })
       : [];
-    const staffNames = new Map(staffRows.map((row) => [row.id, row.name]));
+    const staffNames = new Map(staffRows.map((row: { id: string; name: string }) => [row.id, row.name]));
     return {
       byProduct: [...byProductMap.values()].map((row) => ({ ...row, margin: row.revenue - row.cost })),
       lowStock,
       idleProducts: idle.map((p: { id: string; name: string; stockQty: number }) => ({ id: p.id, name: p.name, stockQty: p.stockQty })),
       inventoryValue,
-      byStaff: byStaffRaw.map((row) => ({
+      byStaff: byStaffRaw.map((row: { soldById: string; _sum: { total: number | null }; _count: { id: number } }) => ({
         soldById: row.soldById,
         soldByName: staffNames.get(row.soldById) ?? "Equipe",
         total: row._sum.total ?? 0,
@@ -390,7 +392,7 @@ export class ProductCatalogUseCase {
       products: opts?.include?.products !== false,
     };
 
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const created = { serviceCategories: 0, productCategories: 0, expenseCategories: 0, services: 0, products: 0 };
       const [serviceCats, productCats, expenseCats, services, products] = await Promise.all([
         tx.serviceCategory.findMany({ where: { OR: [{ barbershopId }, { barbershopId: null }] }, select: { name: true } }),

@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { createHash } from 'crypto';
 
 /**
  * PostgreSQL advisory lock wrapper for serializing concurrent access.
@@ -47,11 +48,10 @@ export class AdvisoryLock {
 
   /**
    * Generates a deterministic lock ID from barbershop + date.
-   * Ensures the same barbershop+date always gets the same lock.
+   * Uses MD5 hash to avoid collisions from 4-byte buffer truncation.
    */
   static generateLockId(barbershopId: string, date: string): number {
-    const buf = Buffer.alloc(4);
-    buf.write(`${barbershopId}:${date}`);
-    return Math.abs(buf.readInt32BE(0));
+    const hash = createHash('md5').update(`${barbershopId}:${date}`).digest();
+    return hash.readUInt32BE(0);
   }
 }

@@ -75,6 +75,7 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
+      - run: npm run docs:check
       - run: npx prisma generate
       - run: npx prisma validate
       - run: npx prisma migrate deploy

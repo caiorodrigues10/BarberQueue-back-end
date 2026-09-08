@@ -45,3 +45,8 @@ export function canOverrideProductPrice(user: ProductActor, permissions: Employe
   if (isPrivilegedActor(user)) return true;
   return permissions.includes("PRODUCTS_MANAGE");
 }
+
+export function canGiveDiscount(user: ProductActor, permissions: EmployeePermission[]): boolean {
+  if (isPrivilegedActor(user)) return true;
+  return permissions.includes("PRODUCTS_MANAGE");
+}

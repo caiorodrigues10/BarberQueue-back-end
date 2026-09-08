@@ -68,7 +68,7 @@ export class PublicAppointmentManagementUseCase {
     }
 
     const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await assertAppointmentBookable({ barbershopId: appointment.barbershopId, serviceId: appointment.serviceId, staffId: appointment.staffId, customerName: appointment.customerName, whatsapp: appointment.whatsapp, date, time }, tx);
+      await assertAppointmentBookable({ barbershopId: appointment.barbershopId, serviceId: appointment.serviceId, staffId: appointment.staffId, customerName: appointment.customerName, whatsapp: appointment.whatsapp, date, time }, tx, { excludeAppointmentId: appointment.id });
       return tx.appointment.update({
         where: { id: appointment.id },
         data: { date: new Date(date), time, publicAccessVersion: { increment: 1 } },

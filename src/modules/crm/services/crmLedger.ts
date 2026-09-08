@@ -63,12 +63,34 @@ export async function recordQueueCompletion(queueItemId: string): Promise<void> 
   });
 }
 
+export async function recordAppointmentCompletion(appointmentId: string): Promise<void> {
+  if (process.env.VITEST) return;
+  const appt = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    select: { barbershopId: true, clientId: true, serviceId: true, status: true, servicePrice: true, paymentMethod: true, clientPackageId: true },
+  });
+  if (!appt || appt.status !== "COMPLETED" || !appt.clientId || appt.clientPackageId) return;
+  const amount = appt.servicePrice ?? 0;
+  const fiado = appt.paymentMethod === "fiado";
+  await recordCrmFinancialEvent({
+    barbershopId: appt.barbershopId,
+    clientId: appt.clientId,
+    kind: "SERVICE_COMPLETED",
+    sourceType: "appointment",
+    sourceId: appointmentId,
+    grossAmount: amount,
+    receivedAmount: fiado ? 0 : amount,
+    outstandingDelta: fiado ? amount : 0,
+    occurredAt: new Date(),
+    metadata: { paymentMethod: appt.paymentMethod ?? null, serviceId: appt.serviceId },
+  });
+}
+
 export async function recordFiadoCreated(fiadoId: string): Promise<void> {
   if (process.env.VITEST) return;
   const fiado = await prisma.fiado.findUnique({ where: { id: fiadoId } });
   if (!fiado?.clientId) return;
-  const originatedFromCompletion = fiado.origin === "SERVICE_COMPLETION" || fiado.origin === "RETAIL_SALE"
-    || (fiado.notes?.includes("finalizar o atendimento da fila") ?? false);
+  const originatedFromCompletion = fiado.origin === "SERVICE_COMPLETION" || fiado.origin === "RETAIL_SALE";
   await recordCrmFinancialEvent({
     barbershopId: fiado.barbershopId,
     clientId: fiado.clientId,
@@ -139,24 +161,39 @@ export async function backfillCrmLedger(barbershopId: string): Promise<{ linked:
     return national.length >= 10 && national.length <= 11 ? national : null;
   };
   let linked = 0;
-  await Promise.all(queues.map(async (row: any) => {
-    const clientId = byPhone.get(normalize(row.whatsapp) ?? "");
-    if (clientId) { await prisma.queueItem.update({ where: { id: row.id }, data: { clientId } }); linked += 1; }
-  }));
-  await Promise.all(fiados.map(async (row: any) => {
-    const clientId = byPhone.get(normalize(row.whatsapp) ?? "");
-    if (clientId) { await prisma.fiado.update({ where: { id: row.id }, data: { clientId } }); linked += 1; }
-  }));
+  const batchSize = 50;
+  for (let i = 0; i < queues.length; i += batchSize) {
+    const batch = queues.slice(i, i + batchSize);
+    await Promise.all(batch.map(async (row: any) => {
+      const clientId = byPhone.get(normalize(row.whatsapp) ?? "");
+      if (clientId) { await prisma.queueItem.update({ where: { id: row.id }, data: { clientId } }); linked += 1; }
+    }));
+  }
+  for (let i = 0; i < fiados.length; i += batchSize) {
+    const batch = fiados.slice(i, i + batchSize);
+    await Promise.all(batch.map(async (row: any) => {
+      const clientId = byPhone.get(normalize(row.whatsapp) ?? "");
+      if (clientId) { await prisma.fiado.update({ where: { id: row.id }, data: { clientId } }); linked += 1; }
+    }));
+  }
   const [completed, packageSales, fiadosWithClient, payments] = await Promise.all([
     prisma.queueItem.findMany({ where: { barbershopId, status: "COMPLETED", clientId: { not: null } }, select: { id: true } }),
     prisma.clientPackage.findMany({ where: { barbershopId }, select: { id: true } }),
     prisma.fiado.findMany({ where: { barbershopId, clientId: { not: null } }, select: { id: true } }),
     prisma.fiadoPayment.findMany({ where: { fiado: { barbershopId } }, select: { id: true } }),
   ]);
-  await Promise.all(completed.map((item: any) => recordQueueCompletion(item.id)));
-  await Promise.all(packageSales.map((sale: any) => recordPackageSale(sale.id)));
-  await Promise.all(fiadosWithClient.map((fiado: any) => recordFiadoCreated(fiado.id)));
-  await Promise.all(payments.map((payment: any) => recordFiadoPayment(payment.id)));
+  for (let i = 0; i < completed.length; i += batchSize) {
+    await Promise.all(completed.slice(i, i + batchSize).map((item: any) => recordQueueCompletion(item.id)));
+  }
+  for (let i = 0; i < packageSales.length; i += batchSize) {
+    await Promise.all(packageSales.slice(i, i + batchSize).map((sale: any) => recordPackageSale(sale.id)));
+  }
+  for (let i = 0; i < fiadosWithClient.length; i += batchSize) {
+    await Promise.all(fiadosWithClient.slice(i, i + batchSize).map((fiado: any) => recordFiadoCreated(fiado.id)));
+  }
+  for (let i = 0; i < payments.length; i += batchSize) {
+    await Promise.all(payments.slice(i, i + batchSize).map((payment: any) => recordFiadoPayment(payment.id)));
+  }
   const events = await prisma.crmFinancialEvent.count({ where: { barbershopId } });
   return { linked, events, createdEvents: events - eventsBefore };
 }

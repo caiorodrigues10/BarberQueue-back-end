@@ -6,9 +6,19 @@ import {
   revokeReferralOnCancellation,
 } from "@/modules/referrals/services/referralService";
 import { billingPeriodDays } from "@/shared/constants/subscription";
+import { getNextStatus, type SubscriptionStatus, type SubscriptionEvent } from "@/shared/services/paymentStateMachine";
 import { getModuleLogger } from "@/shared/utils/logger";
 
 const logger = getModuleLogger('subscriptions:webhook');
+
+function assertTransition(currentStatus: string, event: SubscriptionEvent): SubscriptionStatus {
+  const next = getNextStatus(currentStatus as SubscriptionStatus, event);
+  if (!next) {
+    logger.warn({ currentStatus, event }, 'paymentStateMachine: transition blocked');
+    return currentStatus as SubscriptionStatus;
+  }
+  return next;
+}
 
 export async function handleSubscriptionPaymentWebhook(
   externalReference: string | null | undefined,
@@ -68,7 +78,7 @@ export async function handleSubscriptionPaymentWebhook(
       prisma.subscription.update({
         where: { id: subscriptionId },
         data: {
-          status: "ACTIVE",
+          status: assertTransition(subscription.status, "PAYMENT_APPROVED"),
           endDate: newEndDate,
           ...(invoicePlan ? { planId: invoicePlan.id } : {}),
         },
