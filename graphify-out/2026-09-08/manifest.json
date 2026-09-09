@@ -1155,8 +1155,8 @@
     "semantic_hash": ""
   },
   "src/shared/infra/http/routes/api.ts": {
-    "mtime": 1788913354.3936062,
-    "ast_hash": "3dddc6b3470962f0ac798883d643cc32",
+    "mtime": 1788916433.869628,
+    "ast_hash": "cbe39ad1b4c62b1b1f8268c8ad2454d9",
     "semantic_hash": ""
   },
   "src/shared/infra/http/routes/appointments.routes.ts": {
@@ -2915,8 +2915,8 @@
     "semantic_hash": ""
   },
   "src/modules/financial/dailyCloseoutUseCases.ts": {
-    "mtime": 1788913092.636614,
-    "ast_hash": "df9f854a0946f9f1a6b746c4b85b21b9",
+    "mtime": 1788916413.985247,
+    "ast_hash": "fa72c14d6765690783c4d0c43951d47d",
     "semantic_hash": ""
   },
   "src/modules/monitoring/monitoringController.ts": {
@@ -2937,6 +2937,101 @@
   "src/tests/integration/monitoring.smoke.spec.ts": {
     "mtime": 1788913316.4834962,
     "ast_hash": "fb21cb1a77445372a9936e3320437718",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260909000000_add_cash_movement/migration.sql": {
+    "mtime": 1788915673.0485063,
+    "ast_hash": "c908ee2275aa93e1fca0622f1d5ee691",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260909000001_extend_daily_closeout/migration.sql": {
+    "mtime": 1788915673.6278572,
+    "ast_hash": "a0a04316f85fc72c008691629af2c9d0",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260909010000_add_loyalty/migration.sql": {
+    "mtime": 1788916293.770643,
+    "ast_hash": "9bd09275c51014b49fba8f24e8e3b07e",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260909020000_add_professional_goals/migration.sql": {
+    "mtime": 1788916295.7587523,
+    "ast_hash": "586fe8e51dd758491dcd39ba64523216",
+    "semantic_hash": ""
+  },
+  "src/modules/cash/cashMovement.routes.ts": {
+    "mtime": 1788916328.8948,
+    "ast_hash": "726486855247ac4cdfc57537085d7c66",
+    "semantic_hash": ""
+  },
+  "src/modules/cash/cashMovementController.ts": {
+    "mtime": 1788916474.7736542,
+    "ast_hash": "bfe917a7ea56a8e6dd72c65682b1532d",
+    "semantic_hash": ""
+  },
+  "src/modules/cash/cashMovementRepository.ts": {
+    "mtime": 1788916313.5504777,
+    "ast_hash": "d2fb9255c9cb3294743d0f7238a88f78",
+    "semantic_hash": ""
+  },
+  "src/modules/cash/cashMovementSchema.ts": {
+    "mtime": 1788916306.7724714,
+    "ast_hash": "1b622c06348c0cd3ae4ca11e45bc544c",
+    "semantic_hash": ""
+  },
+  "src/modules/cash/cashMovementUseCases.ts": {
+    "mtime": 1788916320.687602,
+    "ast_hash": "ce1177ed66ec7094b8a2e460de2fc9ff",
+    "semantic_hash": ""
+  },
+  "src/modules/goals/goal.routes.ts": {
+    "mtime": 1788916401.267727,
+    "ast_hash": "e9fe194c52ebd9002007436e68f26a9f",
+    "semantic_hash": ""
+  },
+  "src/modules/goals/goalController.ts": {
+    "mtime": 1788916398.7651775,
+    "ast_hash": "eb1b43d21f0437a795d8ace8ea5e2550",
+    "semantic_hash": ""
+  },
+  "src/modules/goals/goalRepository.ts": {
+    "mtime": 1788916390.0857508,
+    "ast_hash": "c6d5bb54aa0d54e1b17d8d33deee074c",
+    "semantic_hash": ""
+  },
+  "src/modules/goals/goalSchema.ts": {
+    "mtime": 1788916383.7934768,
+    "ast_hash": "d4e00690af5c3de0781e65bf95f82e88",
+    "semantic_hash": ""
+  },
+  "src/modules/goals/goalUseCases.ts": {
+    "mtime": 1788916392.6875525,
+    "ast_hash": "633acb9d8d84d6875c5bd740f1fcba72",
+    "semantic_hash": ""
+  },
+  "src/modules/loyalty/loyalty.routes.ts": {
+    "mtime": 1788916357.8803823,
+    "ast_hash": "26f49983b4b5decd391380c4da82d01b",
+    "semantic_hash": ""
+  },
+  "src/modules/loyalty/loyaltyController.ts": {
+    "mtime": 1788916355.153958,
+    "ast_hash": "3fb5e77627b03ad1f9573ea3d82c6baa",
+    "semantic_hash": ""
+  },
+  "src/modules/loyalty/loyaltyProgramSchema.ts": {
+    "mtime": 1788916337.7005835,
+    "ast_hash": "e09451fce7b15cb2f5999133ab0c2644",
+    "semantic_hash": ""
+  },
+  "src/modules/loyalty/loyaltyRepository.ts": {
+    "mtime": 1788916342.4614427,
+    "ast_hash": "bcd1c13131664d4fe264e57a3f12d527",
+    "semantic_hash": ""
+  },
+  "src/modules/loyalty/loyaltyUseCases.ts": {
+    "mtime": 1788916505.2990093,
+    "ast_hash": "77f7a679a0cd96cff0cc6e42ff4f63a9",
     "semantic_hash": ""
   }
 }

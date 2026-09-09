@@ -236,5 +236,9 @@
   "234": "typescript",
   "235": "DeleteAvatarUseCase",
   "236": "DailyCloseoutController",
-  "237": "@fastify/cors"
+  "237": "@fastify/cors",
+  "238": "CancelPaymentUseCase",
+  "239": "ExportUserDataUseCase",
+  "240": "subscribe.spec.ts",
+  "241": "@opentelemetry/instrumentation-fastify"
 }

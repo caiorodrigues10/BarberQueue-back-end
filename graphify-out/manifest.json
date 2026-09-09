@@ -1155,8 +1155,8 @@
     "semantic_hash": ""
   },
   "src/shared/infra/http/routes/api.ts": {
-    "mtime": 1788916433.869628,
-    "ast_hash": "cbe39ad1b4c62b1b1f8268c8ad2454d9",
+    "mtime": 1788917241.5016544,
+    "ast_hash": "b705221687b1cdb0c2135fceacd9e7d4",
     "semantic_hash": ""
   },
   "src/shared/infra/http/routes/appointments.routes.ts": {
@@ -2995,8 +2995,8 @@
     "semantic_hash": ""
   },
   "src/modules/goals/goalRepository.ts": {
-    "mtime": 1788916390.0857508,
-    "ast_hash": "c6d5bb54aa0d54e1b17d8d33deee074c",
+    "mtime": 1788916985.9083574,
+    "ast_hash": "36f7bb0a83ed4ace41e3776928a815b4",
     "semantic_hash": ""
   },
   "src/modules/goals/goalSchema.ts": {
@@ -3010,18 +3010,18 @@
     "semantic_hash": ""
   },
   "src/modules/loyalty/loyalty.routes.ts": {
-    "mtime": 1788916357.8803823,
-    "ast_hash": "26f49983b4b5decd391380c4da82d01b",
+    "mtime": 1788917179.9900925,
+    "ast_hash": "cda6933b4dfa93e11e6ae1a867d59ba9",
     "semantic_hash": ""
   },
   "src/modules/loyalty/loyaltyController.ts": {
-    "mtime": 1788916355.153958,
-    "ast_hash": "3fb5e77627b03ad1f9573ea3d82c6baa",
+    "mtime": 1788917168.751906,
+    "ast_hash": "1be8757eaef3232df9f0d458d9383ae3",
     "semantic_hash": ""
   },
   "src/modules/loyalty/loyaltyProgramSchema.ts": {
-    "mtime": 1788916337.7005835,
-    "ast_hash": "e09451fce7b15cb2f5999133ab0c2644",
+    "mtime": 1788917175.0973058,
+    "ast_hash": "c6e499b6d3a63eedd2206909fd611453",
     "semantic_hash": ""
   },
   "src/modules/loyalty/loyaltyRepository.ts": {
@@ -3030,8 +3030,33 @@
     "semantic_hash": ""
   },
   "src/modules/loyalty/loyaltyUseCases.ts": {
-    "mtime": 1788916505.2990093,
-    "ast_hash": "77f7a679a0cd96cff0cc6e42ff4f63a9",
+    "mtime": 1788917156.7029388,
+    "ast_hash": "86516af69a431f4c5162041afe3a6634",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260909030000_add_cashback/migration.sql": {
+    "mtime": 1788917143.2992642,
+    "ast_hash": "14059f6d84f2590d8949df23b58a791a",
+    "semantic_hash": ""
+  },
+  "src/modules/analytics/analyticsController.ts": {
+    "mtime": 1788917496.7223892,
+    "ast_hash": "0c9f640bf2a38887d5bec3c7093eabd8",
+    "semantic_hash": ""
+  },
+  "src/modules/analytics/routes/analytics.routes.ts": {
+    "mtime": 1788917233.5142317,
+    "ast_hash": "0f94fcbbb3e66a259131e292df12a02e",
+    "semantic_hash": ""
+  },
+  "src/modules/analytics/services/recommendationEngine.ts": {
+    "mtime": 1788917519.731945,
+    "ast_hash": "2100f4ce19dcae7fc4a2d7435fed2e5a",
+    "semantic_hash": ""
+  },
+  "src/shared/providers/ml/enhancedDemandPredictor.ts": {
+    "mtime": 1788917450.4754398,
+    "ast_hash": "71901fcf900adb37e722a0518ad82905",
     "semantic_hash": ""
   }
 }

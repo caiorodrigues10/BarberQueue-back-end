@@ -4,6 +4,8 @@ import {
   recordVisitSchema,
   redeemRewardSchema,
   adjustManualSchema,
+  recordCashbackSchema,
+  redeemCashbackSchema,
 } from "./loyaltyProgramSchema";
 import { LoyaltyUseCases } from "./loyaltyUseCases";
 import { AppError } from "@/shared/errors/AppError";
@@ -46,6 +48,22 @@ export class LoyaltyController {
     if (!resolvedBarbershopId) throw new AppError("barbershopId is required", 400);
 
     const data = await this.useCases.getAccount(resolvedBarbershopId, clientId);
+
+    reply.send({ success: true, data });
+  }
+
+  async getBalance(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const user = request.user!;
+    const { barbershopId, clientId } = request.params as { barbershopId: string; clientId: string };
+
+    const resolvedBarbershopId =
+      user.role === "MASTER_ADMIN"
+        ? barbershopId
+        : user.barbershopId ?? barbershopId;
+
+    if (!resolvedBarbershopId) throw new AppError("barbershopId is required", 400);
+
+    const data = await this.useCases.getBalance(resolvedBarbershopId, clientId);
 
     reply.send({ success: true, data });
   }
@@ -106,6 +124,51 @@ export class LoyaltyController {
       body.clientId,
       body.delta,
       body.description,
+      body.idempotencyKey
+    );
+
+    reply.status(201).send({ success: true, data });
+  }
+
+  async recordCashback(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const user = request.user!;
+    const { barbershopId } = request.params as { barbershopId: string };
+    const body = recordCashbackSchema.parse(request.body);
+
+    const resolvedBarbershopId =
+      user.role === "MASTER_ADMIN"
+        ? barbershopId
+        : user.barbershopId ?? barbershopId;
+
+    if (!resolvedBarbershopId) throw new AppError("barbershopId is required", 400);
+
+    const data = await this.useCases.recordCashback(
+      resolvedBarbershopId,
+      body.clientId,
+      body.appointmentId,
+      body.paymentAmount,
+      body.idempotencyKey
+    );
+
+    reply.status(201).send({ success: true, data });
+  }
+
+  async redeemCashback(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const user = request.user!;
+    const { barbershopId } = request.params as { barbershopId: string };
+    const body = redeemCashbackSchema.parse(request.body);
+
+    const resolvedBarbershopId =
+      user.role === "MASTER_ADMIN"
+        ? barbershopId
+        : user.barbershopId ?? barbershopId;
+
+    if (!resolvedBarbershopId) throw new AppError("barbershopId is required", 400);
+
+    const data = await this.useCases.redeemCashback(
+      resolvedBarbershopId,
+      body.clientId,
+      body.amount,
       body.idempotencyKey
     );
 

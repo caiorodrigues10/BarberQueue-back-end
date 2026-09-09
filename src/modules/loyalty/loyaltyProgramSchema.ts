@@ -5,6 +5,8 @@ export const configureLoyaltyProgramSchema = z.object({
   config: z.object({
     visitsRequired: z.coerce.number().int().min(1).default(10),
     rewardDescription: z.string().max(200).default("Cortesia"),
+    cashbackEnabled: z.boolean().default(false),
+    cashbackPercent: z.coerce.number().min(0).max(100).default(0),
   }),
 });
 
@@ -26,7 +28,22 @@ export const adjustManualSchema = z.object({
   idempotencyKey: z.string().max(100).optional().nullable(),
 });
 
+export const recordCashbackSchema = z.object({
+  clientId: z.string().uuid(),
+  appointmentId: z.string().uuid(),
+  paymentAmount: z.coerce.number().positive(),
+  idempotencyKey: z.string().max(100).optional().nullable(),
+});
+
+export const redeemCashbackSchema = z.object({
+  clientId: z.string().uuid(),
+  amount: z.coerce.number().positive(),
+  idempotencyKey: z.string().max(100).optional().nullable(),
+});
+
 export type ConfigureLoyaltyProgramInput = z.infer<typeof configureLoyaltyProgramSchema>;
 export type RecordVisitInput = z.infer<typeof recordVisitSchema>;
 export type RedeemRewardInput = z.infer<typeof redeemRewardSchema>;
 export type AdjustManualInput = z.infer<typeof adjustManualSchema>;
+export type RecordCashbackInput = z.infer<typeof recordCashbackSchema>;
+export type RedeemCashbackInput = z.infer<typeof redeemCashbackSchema>;

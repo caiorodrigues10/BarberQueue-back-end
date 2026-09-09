@@ -23,6 +23,34 @@ export class LoyaltyUseCases {
     return { account, entries };
   }
 
+  async getBalance(barbershopId: string, clientId: string) {
+    const account = await this.repo.findOrCreateAccount(barbershopId, clientId);
+    const entries = await this.repo.getAccountEntries(account.id);
+
+    let balance = 0;
+    for (const entry of entries) {
+      switch (entry.type) {
+        case "VISIT_EARNED":
+          balance += 1;
+          break;
+        case "CASHBACK_EARNED":
+          balance += (entry.metadata as any)?.amount ?? 0;
+          break;
+        case "REWARD_REDEEMED":
+          balance -= 1;
+          break;
+        case "CASHBACK_REDEEMED":
+          balance -= (entry.metadata as any)?.amount ?? 0;
+          break;
+        case "MANUAL_ADJUSTMENT":
+          balance += (entry.metadata as any)?.delta ?? 0;
+          break;
+      }
+    }
+
+    return { account, balance, entries };
+  }
+
   async recordVisit(barbershopId: string, clientId: string, idempotencyKey?: string | null) {
     const program = await this.repo.findProgram(barbershopId);
     if (!program || !program.isActive) {
@@ -91,5 +119,87 @@ export class LoyaltyUseCases {
     });
 
     return { account: updatedAccount, entry };
+  }
+
+  async recordCashback(barbershopId: string, clientId: string, appointmentId: string, paymentAmount: number, idempotencyKey?: string | null) {
+    const program = await this.repo.findProgram(barbershopId);
+    if (!program || !program.isActive) {
+      throw new AppError("Loyalty program not configured or inactive", 400);
+    }
+
+    const config = program.config as any;
+    const cashbackPercent = config?.cashbackPercent ?? 0;
+    if (cashbackPercent <= 0) {
+      throw new AppError("Cashback not enabled for this program", 400);
+    }
+
+    const cashbackAmount = Math.round(paymentAmount * (cashbackPercent / 100) * 100) / 100;
+    if (cashbackAmount <= 0) {
+      throw new AppError("Cashback amount too small", 400);
+    }
+
+    const account = await this.repo.findOrCreateAccount(barbershopId, clientId);
+
+    const entry = await this.repo.createLedgerEntry({
+      barbershopId,
+      accountId: account.id,
+      type: "CASHBACK_EARNED",
+      description: `Cashback de R$ ${cashbackAmount.toFixed(2)} sobre pagamento de R$ ${paymentAmount.toFixed(2)}`,
+      metadata: { amount: cashbackAmount, paymentAmount, appointmentId },
+      idempotencyKey,
+    });
+
+    return { account, entry, cashbackAmount };
+  }
+
+  async redeemCashback(barbershopId: string, clientId: string, amount: number, idempotencyKey?: string | null) {
+    const program = await this.repo.findProgram(barbershopId);
+    if (!program || !program.isActive) {
+      throw new AppError("Loyalty program not configured or inactive", 400);
+    }
+
+    const config = program.config as any;
+    if (!config?.cashbackEnabled) {
+      throw new AppError("Cashback redemption not enabled", 400);
+    }
+
+    const account = await this.repo.findOrCreateAccount(barbershopId, clientId);
+    const entries = await this.repo.getAccountEntries(account.id);
+
+    let balance = 0;
+    for (const entry of entries) {
+      switch (entry.type) {
+        case "VISIT_EARNED":
+          balance += 1;
+          break;
+        case "CASHBACK_EARNED":
+          balance += (entry.metadata as any)?.amount ?? 0;
+          break;
+        case "REWARD_REDEEMED":
+          balance -= 1;
+          break;
+        case "CASHBACK_REDEEMED":
+          balance -= (entry.metadata as any)?.amount ?? 0;
+          break;
+        case "MANUAL_ADJUSTMENT":
+          balance += (entry.metadata as any)?.delta ?? 0;
+          break;
+      }
+    }
+
+    if (balance < amount) {
+      throw new AppError(`Insufficient cashback balance. Available: R$ ${balance.toFixed(2)}`, 400);
+    }
+
+    const entry = await this.repo.createLedgerEntry({
+      barbershopId,
+      accountId: account.id,
+      type: "CASHBACK_REDEEMED",
+      description: `Cashback de R$ ${amount.toFixed(2)} resgatado`,
+      metadata: { amount },
+      idempotencyKey,
+    });
+
+    return { account, entry, redeemedAmount: amount, newBalance: balance - amount };
   }
 }

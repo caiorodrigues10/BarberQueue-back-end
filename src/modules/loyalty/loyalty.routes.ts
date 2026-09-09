@@ -24,6 +24,12 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     controller.getAccount.bind(controller)
   );
 
+  app.get(
+    "/barbershops/:barbershopId/loyalty/accounts/:clientId/balance",
+    { preHandler: ownerGuard },
+    controller.getBalance.bind(controller)
+  );
+
   app.post(
     "/barbershops/:barbershopId/loyalty/visit",
     { preHandler: ownerGuard },
@@ -40,5 +46,17 @@ export async function loyaltyRoutes(app: FastifyInstance) {
     "/barbershops/:barbershopId/loyalty/adjust",
     { preHandler: ownerGuard },
     controller.adjustManual.bind(controller)
+  );
+
+  app.post(
+    "/barbershops/:barbershopId/loyalty/cashback/record",
+    { preHandler: ownerGuard },
+    controller.recordCashback.bind(controller)
+  );
+
+  app.post(
+    "/barbershops/:barbershopId/loyalty/cashback/redeem",
+    { preHandler: ownerGuard },
+    controller.redeemCashback.bind(controller)
   );
 }
