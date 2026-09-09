@@ -97,7 +97,7 @@ CREATE TABLE "resource_bookings" (
     "barbershopId" UUID NOT NULL,
     "appointmentId" UUID,
     "staffId" UUID,
-    "startAt" DATE NOT NULL,
+    "startAt" TIMESTAMPTZ NOT NULL,
     "endTime" TIMESTAMPTZ NOT NULL,
     "status" "ResourceBookingStatus" NOT NULL DEFAULT 'CONFIRMED',
     "notes" TEXT,
