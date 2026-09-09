@@ -4,8 +4,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -31,24 +31,24 @@ model User {
   avatarUrl        String?   @db.VarChar(500)
   permissions      String[]  @default([])
 
-  barbershop             Barbershop?              @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  refreshTokens          RefreshToken[]
-  appointments           Appointment[]            @relation("staff")
-  feedPosts              FeedPost[]
-  postMedia              PostMedia[] @relation("PostMediaUploadedBy")
-  referralCodes          ReferralCode[]
-  referralsAsReferrer    Referral[]               @relation("ReferralReferrer")
-  referralsAsReferee     Referral[]               @relation("ReferralReferee")
-  verificationTokens     VerificationToken[]
-  refunds                Refund[]                 @relation("RefundRequestedBy")
-  soldClientPackages     ClientPackage[]          @relation("PackageSoldBy")
-  commissionEntries      CommissionEntry[]
-  deletionRequests       AccountDeletionRequest[]
-  notificationDeliveries NotificationDelivery[]
-  calendarBlocksAsStaff  CalendarBlock[] @relation("CalendarBlockStaff")
-  calendarBlocksCreated  CalendarBlock[] @relation("CalendarBlockCreatedBy")
-  appointmentSeriesCreated AppointmentSeries[] @relation("AppointmentSeriesCreatedBy")
-  clientReviewsAsStaff   ClientReview[] @relation("ClientReviewStaff")
+  barbershop               Barbershop?              @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  refreshTokens            RefreshToken[]
+  appointments             Appointment[]            @relation("staff")
+  feedPosts                FeedPost[]
+  postMedia                PostMedia[]              @relation("PostMediaUploadedBy")
+  referralCodes            ReferralCode[]
+  referralsAsReferrer      Referral[]               @relation("ReferralReferrer")
+  referralsAsReferee       Referral[]               @relation("ReferralReferee")
+  verificationTokens       VerificationToken[]
+  refunds                  Refund[]                 @relation("RefundRequestedBy")
+  soldClientPackages       ClientPackage[]          @relation("PackageSoldBy")
+  commissionEntries        CommissionEntry[]
+  deletionRequests         AccountDeletionRequest[]
+  notificationDeliveries   NotificationDelivery[]
+  calendarBlocksAsStaff    CalendarBlock[]          @relation("CalendarBlockStaff")
+  calendarBlocksCreated    CalendarBlock[]          @relation("CalendarBlockCreatedBy")
+  appointmentSeriesCreated AppointmentSeries[]      @relation("AppointmentSeriesCreatedBy")
+  clientReviewsAsStaff     ClientReview[]           @relation("ClientReviewStaff")
 
   @@index([cpf])
   @@index([deletedAt])
@@ -203,33 +203,33 @@ enum BusinessSegment {
 }
 
 model Barbershop {
-  id                    String         @id @default(uuid()) @db.Uuid
-  name                  String         @db.VarChar(200)
-  whatsapp              String         @db.VarChar(20)
-  logoUrl               String?        @db.VarChar(500)
-  cnpj                  String?        @db.VarChar(20)
-  address               String?        @db.Text
-  city                  String?        @db.VarChar(120)
+  id                    String           @id @default(uuid()) @db.Uuid
+  name                  String           @db.VarChar(200)
+  whatsapp              String           @db.VarChar(20)
+  logoUrl               String?          @db.VarChar(500)
+  cnpj                  String?          @db.VarChar(20)
+  address               String?          @db.Text
+  city                  String?          @db.VarChar(120)
   latitude              Float?
   longitude             Float?
-  operationMode         OperationMode  @default(HYBRID)
-  timezone              String         @default("America/Sao_Paulo") @db.VarChar(64)
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
-  active                Boolean        @default(true)
-  approvalStatus        ApprovalStatus @default(PENDING)
-  rejectionReason       String?        @db.Text
+  operationMode         OperationMode    @default(HYBRID)
+  timezone              String           @default("America/Sao_Paulo") @db.VarChar(64)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  active                Boolean          @default(true)
+  approvalStatus        ApprovalStatus   @default(PENDING)
+  rejectionReason       String?          @db.Text
   /// Nome da instância da Evolution API conectada ao WhatsApp desta barbearia.
   /// Se vazio, cai no fallback da env var EVOLUTION_INSTANCE_NAME.
-  evolutionInstanceName String?        @db.VarChar(100)
-  queueAlertEnabled    Boolean        @default(false)
-  queueAlertThreshold  Int            @default(10)
-  queueAlertPhone      String?        @db.VarChar(20)
-  queueAlertUpdatedAt  DateTime?
+  evolutionInstanceName String?          @db.VarChar(100)
+  queueAlertEnabled     Boolean          @default(false)
+  queueAlertThreshold   Int              @default(10)
+  queueAlertPhone       String?          @db.VarChar(20)
+  queueAlertUpdatedAt   DateTime?
   /// Código de indicação que trouxe este salão (dono→dono).
-  referredByCodeId      String?        @db.Uuid
+  referredByCodeId      String?          @db.Uuid
   /// Publicação automática de posts no horário de abertura (Schedule.openTime).
-  autoPostEnabled       Boolean        @default(false)
+  autoPostEnabled       Boolean          @default(false)
   /// Última data em que o auto-post foi disparado (evita duplicidade no mesmo dia).
   autoPostLastDate      DateTime?
   /// AUTO segue a agenda; OPEN/CLOSED sobrescrevem o dia (OPEN expira no fim do dia).
@@ -241,6 +241,11 @@ model Barbershop {
   openingMode           OpeningMode      @default(SCHEDULE)
   /// Nicho do estabelecimento — só orienta templates; não altera permissões nem URLs.
   businessSegment       BusinessSegment  @default(OTHER)
+
+  onboardingCompletedSteps String[]
+  onboardingCurrentStep    String?
+  onboardingStartedAt      DateTime?
+  onboardingCompletedAt    DateTime?
 
   schedules                Schedule[]
   services                 Service[]
@@ -272,18 +277,20 @@ model Barbershop {
   notificationDeliveries   NotificationDelivery[]
   notificationPreferences  NotificationPreference[]
   notificationSuppressions NotificationSuppression[]
-  scheduleExceptions     ScheduleException[]
-  calendarBlocks         CalendarBlock[]
-  appointmentPolicies    AppointmentPolicy?
-  appointmentSeries      AppointmentSeries[]
-  clientReviews          ClientReview[]
-  products               Product[]
-  productCategories      ProductCategory[]
-  suppliers              Supplier[]
-  stockMovements         StockMovement[]
-  inventoryReceipts      InventoryReceipt[]
-  retailSales            RetailSale[]
-  catalogTemplateInstalls CatalogTemplateInstall[]
+  scheduleExceptions       ScheduleException[]
+  calendarBlocks           CalendarBlock[]
+  appointmentPolicies      AppointmentPolicy?
+  appointmentSeries        AppointmentSeries[]
+  clientReviews            ClientReview[]
+  products                 Product[]
+  productCategories        ProductCategory[]
+  suppliers                Supplier[]
+  stockMovements           StockMovement[]
+  inventoryReceipts        InventoryReceipt[]
+  retailSales              RetailSale[]
+  catalogTemplateInstalls  CatalogTemplateInstall[]
+  dailyCloseouts           DailyCloseout[]
+  activationMetrics        ActivationMetric[]
 
   @@index([approvalStatus])
   @@index([active])
@@ -292,21 +299,21 @@ model Barbershop {
 }
 
 model BarbershopOnboarding {
-  id                      String    @id @default(uuid()) @db.Uuid
-  barbershopId            String    @unique @db.Uuid
-  profileConfirmedAt      DateTime?
-  scheduleConfirmedAt     DateTime?
-  servicesConfirmedAt     DateTime?
-  publicLinkValidatedAt   DateTime?
-  whatsappConfiguredAt    DateTime?
-  firstServiceCompletedAt DateTime?
-  welcomeSeenAt           DateTime?
+  id                       String    @id @default(uuid()) @db.Uuid
+  barbershopId             String    @unique @db.Uuid
+  profileConfirmedAt       DateTime?
+  scheduleConfirmedAt      DateTime?
+  servicesConfirmedAt      DateTime?
+  publicLinkValidatedAt    DateTime?
+  whatsappConfiguredAt     DateTime?
+  firstServiceCompletedAt  DateTime?
+  welcomeSeenAt            DateTime?
   operationModeConfirmedAt DateTime?
-  segmentConfirmedAt      DateTime?
-  dismissedAt             DateTime?
-  completedAt             DateTime?
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+  segmentConfirmedAt       DateTime?
+  dismissedAt              DateTime?
+  completedAt              DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
@@ -336,13 +343,13 @@ model Schedule {
 model AppointmentPolicy {
   id                      String   @id @default(uuid()) @db.Uuid
   barbershopId            String   @unique @db.Uuid
-  bookingNoticeMinutes   Int      @default(60)
-  cancelNoticeMinutes    Int      @default(120)
+  bookingNoticeMinutes    Int      @default(60)
+  cancelNoticeMinutes     Int      @default(120)
   rescheduleNoticeMinutes Int      @default(120)
-  bookingHorizonDays     Int      @default(60)
-  allowPublicCancellation Boolean @default(true)
-  allowPublicReschedule   Boolean @default(true)
-  requestReview           Boolean @default(true)
+  bookingHorizonDays      Int      @default(60)
+  allowPublicCancellation Boolean  @default(true)
+  allowPublicReschedule   Boolean  @default(true)
+  requestReview           Boolean  @default(true)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
@@ -352,15 +359,15 @@ model AppointmentPolicy {
 }
 
 model ScheduleException {
-  id          String   @id @default(uuid()) @db.Uuid
-  barbershopId String  @db.Uuid
-  date        DateTime @db.Date
-  isOpen      Boolean  @default(false)
-  openTime    String?  @db.VarChar(5)
-  closeTime   String?  @db.VarChar(5)
-  reason      String?  @db.VarChar(200)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid()) @db.Uuid
+  barbershopId String   @db.Uuid
+  date         DateTime @db.Date
+  isOpen       Boolean  @default(false)
+  openTime     String?  @db.VarChar(5)
+  closeTime    String?  @db.VarChar(5)
+  reason       String?  @db.VarChar(200)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
@@ -377,17 +384,17 @@ enum CalendarBlockRecurrence {
 }
 
 model CalendarBlock {
-  id            String                 @id @default(uuid()) @db.Uuid
-  barbershopId  String                 @db.Uuid
-  staffId       String?                @db.Uuid
-  startAt       DateTime
-  endAt         DateTime
-  reason        String                 @db.VarChar(200)
-  recurrence    CalendarBlockRecurrence @default(NONE)
+  id              String                  @id @default(uuid()) @db.Uuid
+  barbershopId    String                  @db.Uuid
+  staffId         String?                 @db.Uuid
+  startAt         DateTime
+  endAt           DateTime
+  reason          String                  @db.VarChar(200)
+  recurrence      CalendarBlockRecurrence @default(NONE)
   recurrenceUntil DateTime?
-  createdById   String                 @db.Uuid
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
+  createdById     String                  @db.Uuid
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
 
   barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   staff      User?      @relation("CalendarBlockStaff", fields: [staffId], references: [id], onDelete: SetNull)
@@ -399,16 +406,16 @@ model CalendarBlock {
 }
 
 model AppointmentSeries {
-  id             String   @id @default(uuid()) @db.Uuid
-  barbershopId   String   @db.Uuid
-  intervalWeeks  Int      @default(1)
+  id              String   @id @default(uuid()) @db.Uuid
+  barbershopId    String   @db.Uuid
+  intervalWeeks   Int      @default(1)
   occurrenceCount Int
-  startDate      DateTime @db.Date
-  createdById    String   @db.Uuid
-  createdAt      DateTime @default(now())
+  startDate       DateTime @db.Date
+  createdById     String   @db.Uuid
+  createdAt       DateTime @default(now())
 
-  barbershop  Barbershop  @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  createdBy   User        @relation("AppointmentSeriesCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  createdBy    User          @relation("AppointmentSeriesCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   appointments Appointment[]
 
   @@index([barbershopId, startDate])
@@ -510,40 +517,40 @@ enum QueueStatus {
 }
 
 model Appointment {
-  id              String            @id @default(uuid()) @db.Uuid
-  barbershopId    String            @db.Uuid
-  serviceId       String            @db.Uuid
-  staffId         String?           @db.Uuid
-  clientId        String?           @db.Uuid
-  clientPackageId String?           @db.Uuid
-  customerName    String            @db.VarChar(200)
-  whatsapp        String            @db.VarChar(20)
-  date            DateTime          @db.Date
-  time            String            @db.VarChar(5)
-  status          AppointmentStatus @default(CONFIRMED)
+  id                  String                         @id @default(uuid()) @db.Uuid
+  barbershopId        String                         @db.Uuid
+  serviceId           String                         @db.Uuid
+  staffId             String?                        @db.Uuid
+  clientId            String?                        @db.Uuid
+  clientPackageId     String?                        @db.Uuid
+  customerName        String                         @db.VarChar(200)
+  whatsapp            String                         @db.VarChar(20)
+  date                DateTime                       @db.Date
+  time                String                         @db.VarChar(5)
+  status              AppointmentStatus              @default(CONFIRMED)
   /// Quando o lembrete diário de WhatsApp foi enviado (evita duplicidade)
-  reminderSentAt  DateTime?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  publicAccessVersion Int             @default(1)
-  rescheduledFromId String?           @db.Uuid
-  canceledAt      DateTime?
-  cancellationSource AppointmentCancellationSource?
-  cancellationReason String?          @db.VarChar(300)
-  seriesId        String?             @db.Uuid
-  occurrenceIndex Int?
+  reminderSentAt      DateTime?
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+  publicAccessVersion Int                            @default(1)
+  rescheduledFromId   String?                        @db.Uuid
+  canceledAt          DateTime?
+  cancellationSource  AppointmentCancellationSource?
+  cancellationReason  String?                        @db.VarChar(300)
+  seriesId            String?                        @db.Uuid
+  occurrenceIndex     Int?
 
-  barbershop    Barbershop     @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  service       Service        @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  staff         User?          @relation("staff", fields: [staffId], references: [id], onDelete: SetNull)
-  client        SalonClient?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  clientPackage ClientPackage? @relation(fields: [clientPackageId], references: [id], onDelete: SetNull)
-  series        AppointmentSeries? @relation(fields: [seriesId], references: [id], onDelete: SetNull)
-  rescheduledFrom Appointment? @relation("AppointmentReschedule", fields: [rescheduledFromId], references: [id], onDelete: SetNull)
-  rescheduledTo Appointment[] @relation("AppointmentReschedule")
-  review        ClientReview?
-  queueItems    QueueItem[]
-  retailSales   RetailSale[]
+  barbershop      Barbershop         @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  service         Service            @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  staff           User?              @relation("staff", fields: [staffId], references: [id], onDelete: SetNull)
+  client          SalonClient?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientPackage   ClientPackage?     @relation(fields: [clientPackageId], references: [id], onDelete: SetNull)
+  series          AppointmentSeries? @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  rescheduledFrom Appointment?       @relation("AppointmentReschedule", fields: [rescheduledFromId], references: [id], onDelete: SetNull)
+  rescheduledTo   Appointment[]      @relation("AppointmentReschedule")
+  review          ClientReview?
+  queueItems      QueueItem[]
+  retailSales     RetailSale[]
 
   @@index([barbershopId, staffId, date, status])
   @@index([clientId])
@@ -669,37 +676,37 @@ model ClientPackage {
 }
 
 model FeedPost {
-  id           String         @id @default(uuid()) @db.Uuid
-  barbershopId String         @db.Uuid
-  authorId     String?        @db.Uuid
-  type         FeedType
-  title        String?        @db.VarChar(200)
-  content      String         @db.Text
+  id               String         @id @default(uuid()) @db.Uuid
+  barbershopId     String         @db.Uuid
+  authorId         String?        @db.Uuid
+  type             FeedType
+  title            String?        @db.VarChar(200)
+  content          String         @db.Text
   // Text: o front envia data-URLs base64 (até migrar para upload GCS)
-  imageUrl     String?        @db.Text
+  imageUrl         String?        @db.Text
   /// URL do vídeo no GCS (pasta posts/).
-  videoUrl     String?        @db.Text
-  likes        Int            @default(0)
+  videoUrl         String?        @db.Text
+  likes            Int            @default(0)
   /// Agendamento de publicação: NULL = publicado imediatamente (rascunho se status DRAFT).
-  scheduledFor DateTime?
+  scheduledFor     DateTime?
   /// Timestamp real da publicação (preenchido pelo cron quando status vira PUBLISHED).
-  publishedAt  DateTime?
-  status       FeedPostStatus @default(DRAFT)
+  publishedAt      DateTime?
+  status           FeedPostStatus @default(DRAFT)
   /// Para onde o CTA do post direciona o cliente: fila, agenda ou ambos.
-  postMode     PostMode       @default(BOTH)
+  postMode         PostMode       @default(BOTH)
   /// Texto do CTA exibido no post (ex.: "Agende seu horário").
-  ctaText      String?        @db.VarChar(120)
-  templateKey  String         @default("agenda-aberta") @db.VarChar(64)
-  format       PostFormat     @default(SQUARE)
-  primaryMediaId   String?    @db.Uuid
-  secondaryMediaId String?    @db.Uuid
-  paletteKey   String         @default("brand") @db.VarChar(32)
-  designOptions Json?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  ctaText          String?        @db.VarChar(120)
+  templateKey      String         @default("agenda-aberta") @db.VarChar(64)
+  format           PostFormat     @default(SQUARE)
+  primaryMediaId   String?        @db.Uuid
+  secondaryMediaId String?        @db.Uuid
+  paletteKey       String         @default("brand") @db.VarChar(32)
+  designOptions    Json?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
-  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  author     User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  barbershop     Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  author         User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
   primaryMedia   PostMedia? @relation("PrimaryPostMedia", fields: [primaryMediaId], references: [id], onDelete: SetNull)
   secondaryMedia PostMedia? @relation("SecondaryPostMedia", fields: [secondaryMediaId], references: [id], onDelete: SetNull)
 
@@ -714,18 +721,19 @@ enum PostFormat {
 }
 
 model PostMedia {
-  id           String   @id @default(uuid()) @db.Uuid
-  barbershopId String   @db.Uuid
-  uploadedById String?  @db.Uuid
-  url          String   @db.Text
-  objectName   String   @db.Text
-  mimeType     String   @db.VarChar(80)
-  size         Int
-  createdAt    DateTime @default(now())
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  uploadedBy   User? @relation("PostMediaUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
-  primaryPosts FeedPost[] @relation("PrimaryPostMedia")
+  id             String     @id @default(uuid()) @db.Uuid
+  barbershopId   String     @db.Uuid
+  uploadedById   String?    @db.Uuid
+  url            String     @db.Text
+  objectName     String     @db.Text
+  mimeType       String     @db.VarChar(80)
+  size           Int
+  createdAt      DateTime   @default(now())
+  barbershop     Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  uploadedBy     User?      @relation("PostMediaUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  primaryPosts   FeedPost[] @relation("PrimaryPostMedia")
   secondaryPosts FeedPost[] @relation("SecondaryPostMedia")
+
   @@index([barbershopId, createdAt])
   @@map("post_media")
 }
@@ -1037,30 +1045,30 @@ model ExpenseCategory {
 }
 
 model Expense {
-  id            String            @id @default(uuid()) @db.Uuid
-  barbershopId  String            @db.Uuid
-  categoryId    String?           @db.Uuid
-  title         String            @db.VarChar(200)
-  description   String?           @db.Text
-  amount        Float             @db.Real
-  type          ExpenseType       @default(VARIABLE)
-  recurrence    ExpenseRecurrence @default(ONCE)
-  referenceDate DateTime
-  paidAt        DateTime?
-  dueDate       DateTime?
-  paymentMethod String?           @db.VarChar(50)
-  supplierName  String?           @db.VarChar(200)
-  receiptUrl    String?           @db.VarChar(500)
-  notes         String?           @db.Text
-  createdById   String            @db.Uuid
+  id                 String            @id @default(uuid()) @db.Uuid
+  barbershopId       String            @db.Uuid
+  categoryId         String?           @db.Uuid
+  title              String            @db.VarChar(200)
+  description        String?           @db.Text
+  amount             Float             @db.Real
+  type               ExpenseType       @default(VARIABLE)
+  recurrence         ExpenseRecurrence @default(ONCE)
+  referenceDate      DateTime
+  paidAt             DateTime?
+  dueDate            DateTime?
+  paymentMethod      String?           @db.VarChar(50)
+  supplierName       String?           @db.VarChar(200)
+  receiptUrl         String?           @db.VarChar(500)
+  notes              String?           @db.Text
+  createdById        String            @db.Uuid
   /// Despesa gerada por entrada de estoque — não editar pelo painel financeiro.
-  inventoryReceiptId String?      @unique @db.Uuid
-  locked        Boolean           @default(false)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  inventoryReceiptId String?           @unique @db.Uuid
+  locked             Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
-  barbershop Barbershop       @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  category   ExpenseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  barbershop       Barbershop        @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  category         ExpenseCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   inventoryReceipt InventoryReceipt? @relation(fields: [inventoryReceiptId], references: [id], onDelete: SetNull)
 
   @@index([barbershopId])
@@ -1086,29 +1094,29 @@ enum ExpenseRecurrence {
 }
 
 model Fiado {
-  id             String      @id @default(uuid()) @db.Uuid
-  barbershopId   String      @db.Uuid
-  customerName   String      @db.VarChar(200)
-  whatsapp       String      @db.VarChar(20)
-  clientId       String?     @db.Uuid
-  description    String      @db.VarChar(500)
-  originalAmount Float       @db.Real
-  paidAmount     Float       @default(0) @db.Real
-  status         FiadoStatus @default(PENDING)
-  dueDate        DateTime?
-  notes          String?     @db.Text
-  createdById    String      @db.Uuid
-  origin         FiadoOrigin @default(MANUAL)
-  retailSaleId   String?     @unique @db.Uuid
-  creditAdjustedAmount Float @default(0) @db.Real
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id                   String      @id @default(uuid()) @db.Uuid
+  barbershopId         String      @db.Uuid
+  customerName         String      @db.VarChar(200)
+  whatsapp             String      @db.VarChar(20)
+  clientId             String?     @db.Uuid
+  description          String      @db.VarChar(500)
+  originalAmount       Float       @db.Real
+  paidAmount           Float       @default(0) @db.Real
+  status               FiadoStatus @default(PENDING)
+  dueDate              DateTime?
+  notes                String?     @db.Text
+  createdById          String      @db.Uuid
+  origin               FiadoOrigin @default(MANUAL)
+  retailSaleId         String?     @unique @db.Uuid
+  creditAdjustedAmount Float       @default(0) @db.Real
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
-  barbershop Barbershop     @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  client     SalonClient?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  payments   FiadoPayment[]
+  barbershop  Barbershop        @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  client      SalonClient?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  payments    FiadoPayment[]
   adjustments FiadoAdjustment[]
-  retailSale RetailSale?    @relation(fields: [retailSaleId], references: [id], onDelete: SetNull)
+  retailSale  RetailSale?       @relation(fields: [retailSaleId], references: [id], onDelete: SetNull)
 
   @@index([barbershopId])
   @@index([status])
@@ -1132,13 +1140,13 @@ enum FiadoOrigin {
 }
 
 model FiadoAdjustment {
-  id             String   @id @default(uuid()) @db.Uuid
-  barbershopId   String   @db.Uuid
-  fiadoId        String   @db.Uuid
-  amount         Float    @db.Real
-  reason         String   @db.VarChar(300)
-  createdById    String   @db.Uuid
-  createdAt      DateTime @default(now())
+  id           String   @id @default(uuid()) @db.Uuid
+  barbershopId String   @db.Uuid
+  fiadoId      String   @db.Uuid
+  amount       Float    @db.Real
+  reason       String   @db.VarChar(300)
+  createdById  String   @db.Uuid
+  createdAt    DateTime @default(now())
 
   fiado Fiado @relation(fields: [fiadoId], references: [id], onDelete: Cascade)
 
@@ -1574,25 +1582,25 @@ model Feedback {
 }
 
 model ClientReview {
-  id            String   @id @default(uuid()) @db.Uuid
-  barbershopId  String   @db.Uuid
-  appointmentId String   @unique @db.Uuid
-  clientId      String?  @db.Uuid
-  staffId       String?  @db.Uuid
+  id            String             @id @default(uuid()) @db.Uuid
+  barbershopId  String             @db.Uuid
+  appointmentId String             @unique @db.Uuid
+  clientId      String?            @db.Uuid
+  staffId       String?            @db.Uuid
   rating        Int
-  comment       String?  @db.VarChar(1000)
-  response      String?  @db.VarChar(1000)
+  comment       String?            @db.VarChar(1000)
+  response      String?            @db.VarChar(1000)
   status        ClientReviewStatus @default(PUBLISHED)
   reportedAt    DateTime?
   respondedAt   DateTime?
   moderatedAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  appointment  Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  client       SalonClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  staff        User? @relation("ClientReviewStaff", fields: [staffId], references: [id], onDelete: SetNull)
+  barbershop  Barbershop   @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  appointment Appointment  @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  client      SalonClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  staff       User?        @relation("ClientReviewStaff", fields: [staffId], references: [id], onDelete: SetNull)
 
   @@index([barbershopId, status, createdAt])
   @@index([staffId, status])
@@ -1731,31 +1739,31 @@ model Supplier {
 }
 
 model Product {
-  id              String      @id @default(uuid()) @db.Uuid
-  barbershopId    String      @db.Uuid
-  categoryId      String?     @db.Uuid
-  name            String      @db.VarChar(160)
-  description     String?     @db.VarChar(400)
-  sku             String?     @db.VarChar(60)
-  barcode         String?     @db.VarChar(80)
-  imageUrl        String?     @db.VarChar(500)
-  unitLabel       String      @default("unidade") @db.VarChar(40)
-  salePrice       Float       @db.Real
-  averageCost     Float       @default(0) @db.Real
-  stockQty        Float       @default(0) @db.Real
-  minStock        Float       @default(0) @db.Real
-  active          Boolean     @default(true)
-  type            ProductType @default(RETAIL)
-  trackStock      Boolean     @default(true)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id           String      @id @default(uuid()) @db.Uuid
+  barbershopId String      @db.Uuid
+  categoryId   String?     @db.Uuid
+  name         String      @db.VarChar(160)
+  description  String?     @db.VarChar(400)
+  sku          String?     @db.VarChar(60)
+  barcode      String?     @db.VarChar(80)
+  imageUrl     String?     @db.VarChar(500)
+  unitLabel    String      @default("unidade") @db.VarChar(40)
+  salePrice    Float       @db.Real
+  averageCost  Float       @default(0) @db.Real
+  stockQty     Float       @default(0) @db.Real
+  minStock     Float       @default(0) @db.Real
+  active       Boolean     @default(true)
+  type         ProductType @default(RETAIL)
+  trackStock   Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
-  barbershop Barbershop       @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  category   ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  movements  StockMovement[]
+  barbershop   Barbershop             @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  category     ProductCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  movements    StockMovement[]
   receiptItems InventoryReceiptItem[]
-  saleLines  RetailSaleLine[]
-  refundLines RetailSaleRefundLine[]
+  saleLines    RetailSaleLine[]
+  refundLines  RetailSaleRefundLine[]
 
   /// SKU e barcode: unicidade por salão via índices parciais SQL (migration 20260904000000).
   @@index([barbershopId, active])
@@ -1766,19 +1774,19 @@ model Product {
 }
 
 model StockMovement {
-  id              String             @id @default(uuid()) @db.Uuid
-  barbershopId    String             @db.Uuid
-  productId       String             @db.Uuid
-  type            StockMovementType
-  quantity        Float              @db.Real
-  unitCost        Float              @db.Real
-  stockBefore     Float              @db.Real
-  stockAfter      Float              @db.Real
-  sourceType      String             @db.VarChar(40)
-  sourceId        String             @db.Uuid
-  reason          String?            @db.VarChar(300)
-  createdById     String             @db.Uuid
-  createdAt       DateTime           @default(now())
+  id           String            @id @default(uuid()) @db.Uuid
+  barbershopId String            @db.Uuid
+  productId    String            @db.Uuid
+  type         StockMovementType
+  quantity     Float             @db.Real
+  unitCost     Float             @db.Real
+  stockBefore  Float             @db.Real
+  stockAfter   Float             @db.Real
+  sourceType   String            @db.VarChar(40)
+  sourceId     String            @db.Uuid
+  reason       String?           @db.VarChar(300)
+  createdById  String            @db.Uuid
+  createdAt    DateTime          @default(now())
 
   barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   product    Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
@@ -1790,20 +1798,20 @@ model StockMovement {
 }
 
 model InventoryReceipt {
-  id              String   @id @default(uuid()) @db.Uuid
-  barbershopId    String   @db.Uuid
-  supplierId      String?  @db.Uuid
-  supplierName    String?  @db.VarChar(200)
-  receivedAt      DateTime
-  paymentMethod   String?  @db.VarChar(50)
-  total           Float    @db.Real
-  notes           String?  @db.Text
-  createExpense   Boolean  @default(true)
-  skipExpenseReason String? @db.VarChar(300)
-  reversedAt      DateTime?
-  reversedById    String?  @db.Uuid
-  createdById     String   @db.Uuid
-  createdAt       DateTime @default(now())
+  id                String    @id @default(uuid()) @db.Uuid
+  barbershopId      String    @db.Uuid
+  supplierId        String?   @db.Uuid
+  supplierName      String?   @db.VarChar(200)
+  receivedAt        DateTime
+  paymentMethod     String?   @db.VarChar(50)
+  total             Float     @db.Real
+  notes             String?   @db.Text
+  createExpense     Boolean   @default(true)
+  skipExpenseReason String?   @db.VarChar(300)
+  reversedAt        DateTime?
+  reversedById      String?   @db.Uuid
+  createdById       String    @db.Uuid
+  createdAt         DateTime  @default(now())
 
   barbershop Barbershop             @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   supplier   Supplier?              @relation(fields: [supplierId], references: [id], onDelete: SetNull)
@@ -1832,22 +1840,22 @@ model InventoryReceiptItem {
 }
 
 model RetailSale {
-  id              String           @id @default(uuid()) @db.Uuid
-  barbershopId    String           @db.Uuid
-  clientId        String?          @db.Uuid
-  soldById        String           @db.Uuid
-  queueItemId     String?          @db.Uuid
-  appointmentId   String?          @db.Uuid
-  paymentMethod   String           @db.VarChar(40)
-  subtotal        Float            @db.Real
-  discount        Float            @default(0) @db.Real
-  total           Float            @db.Real
-  totalCost       Float            @db.Real
-  status          RetailSaleStatus @default(COMPLETED)
-  soldAt          DateTime         @default(now())
-  idempotencyKey  String           @db.VarChar(120)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id             String           @id @default(uuid()) @db.Uuid
+  barbershopId   String           @db.Uuid
+  clientId       String?          @db.Uuid
+  soldById       String           @db.Uuid
+  queueItemId    String?          @db.Uuid
+  appointmentId  String?          @db.Uuid
+  paymentMethod  String           @db.VarChar(40)
+  subtotal       Float            @db.Real
+  discount       Float            @default(0) @db.Real
+  total          Float            @db.Real
+  totalCost      Float            @db.Real
+  status         RetailSaleStatus @default(COMPLETED)
+  soldAt         DateTime         @default(now())
+  idempotencyKey String           @db.VarChar(120)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   barbershop  Barbershop         @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   client      SalonClient?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
@@ -1923,14 +1931,54 @@ model RetailSaleRefundLine {
 }
 
 model CatalogTemplateInstall {
-  id           String           @id @default(uuid()) @db.Uuid
-  barbershopId String           @db.Uuid
+  id           String          @id @default(uuid()) @db.Uuid
+  barbershopId String          @db.Uuid
   segment      BusinessSegment
-  version      String           @db.VarChar(40)
-  installedAt  DateTime         @default(now())
+  version      String          @db.VarChar(40)
+  installedAt  DateTime        @default(now())
 
   barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
   @@unique([barbershopId, segment, version])
   @@map("catalog_template_installs")
+}
+
+model DailyCloseout {
+  id           String    @id @default(uuid()) @db.Uuid
+  barbershopId String    @db.Uuid
+  date         DateTime  @db.Date
+  balanceOpen  Decimal   @default(0) @db.Decimal(10, 2)
+  cashReceived Decimal   @default(0) @db.Decimal(10, 2)
+  pixReceived  Decimal   @default(0) @db.Decimal(10, 2)
+  cardReceived Decimal   @default(0) @db.Decimal(10, 2)
+  fiadoCreated Decimal   @default(0) @db.Decimal(10, 2)
+  fiadoPaid    Decimal   @default(0) @db.Decimal(10, 2)
+  expenses     Decimal   @default(0) @db.Decimal(10, 2)
+  commissions  Decimal   @default(0) @db.Decimal(10, 2)
+  productSales Decimal   @default(0) @db.Decimal(10, 2)
+  discrepancy  Decimal?  @db.Decimal(10, 2)
+  notes        String?
+  closedBy     String?   @db.Uuid
+  closedAt     DateTime?
+  createdAt    DateTime  @default(now())
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  @@unique([barbershopId, date])
+  @@index([barbershopId])
+  @@map("daily_closeouts")
+}
+
+model ActivationMetric {
+  id           String   @id @default(uuid()) @db.Uuid
+  barbershopId String   @db.Uuid
+  event        String   @db.VarChar(100)
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  @@index([barbershopId])
+  @@index([barbershopId, event])
+  @@map("activation_metrics")
 }

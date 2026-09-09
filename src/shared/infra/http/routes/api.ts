@@ -28,6 +28,9 @@ import { calendarRoutes } from '@/modules/barbershops/routes/calendar.routes'
 import { reviewRoutes } from '@/modules/appointments/routes/review.routes'
 import { webhooksRoutes } from './webhooks.routes'
 import { realtimeWsRoutes } from './ws.routes'
+import { dailyCloseoutRoutes } from './dailyCloseout.routes'
+import { monitoringRoutes } from '@/modules/monitoring/monitoringRoutes'
+import { activationRoutes } from '@/modules/analytics/routes/activation.routes'
 
 export async function apiRoutes(app: FastifyInstance) {
 	await realtimeWsRoutes(app)
@@ -59,4 +62,7 @@ export async function apiRoutes(app: FastifyInstance) {
 	await calendarRoutes(app)
 	await reviewRoutes(app)
 	await webhooksRoutes(app)
+	await dailyCloseoutRoutes(app)
+	await monitoringRoutes(app)
+	await activationRoutes(app)
 }

@@ -5,6 +5,7 @@ import { checkSubscription } from '@/shared/infra/http/middlewares/checkSubscrip
 import { setRlsContext } from '@/shared/infra/http/middlewares/setRlsContext';
 import { GetOnboardingUseCase } from '../useCases/onboarding/GetOnboardingUseCase';
 import { UpdateOnboardingStepUseCase } from '../useCases/onboarding/UpdateOnboardingStepUseCase';
+import { OnboardingProgressController } from '../useCases/onboardingProgress/OnboardingProgressController';
 import { container } from 'tsyringe';
 import { prisma } from '@/libs/prismaClient';
 
@@ -51,4 +52,10 @@ export async function onboardingRoutes(app: FastifyInstance) {
     const onboarding = await prisma.barbershopOnboarding.update({ where: { barbershopId: id }, data: { dismissedAt: null } });
     return reply.send({ success: true, data: onboarding });
   });
+
+  // Onboarding Progress (new fields on Barbershop)
+  const progressController = container.resolve(OnboardingProgressController);
+
+  app.patch('/barbershops/:id/onboarding/progress', { preHandler: ownerGuard }, progressController.update.bind(progressController));
+  app.get('/barbershops/:id/onboarding/progress', { preHandler: ownerGuard }, progressController.get.bind(progressController));
 }

@@ -3,6 +3,19 @@ import { prisma } from '@/libs/prismaClient';
 import { getRedisConnection } from '@/shared/infra/queue/redisConnection';
 import { getProcessRole } from '@/shared/config/processRole';
 
+async function checkMigrations(): Promise<{ status: string; pending: number }> {
+  try {
+    const pending = await prisma.$queryRaw`
+      SELECT COUNT(*)::int as count FROM _prisma_migrations
+      WHERE finished_at IS NULL
+    `;
+    const count = (pending as any[])[0]?.count ?? 0;
+    return { status: count === 0 ? 'ok' : 'pending', pending: count };
+  } catch {
+    return { status: 'error', pending: -1 };
+  }
+}
+
 /**
  * Health check endpoints:
  * - /health: process alive + dependency status (DB, Redis)
@@ -12,6 +25,7 @@ export async function healthRoutes(app: FastifyInstance) {
   app.get('/health', async (_request: FastifyRequest, reply: FastifyReply) => {
     const dbHealthy = await checkDatabase();
     const redisHealthy = await checkRedis();
+    const migrations = await checkMigrations();
 
     reply.send({
       status: dbHealthy && redisHealthy ? 'ok' : 'degraded',
@@ -21,6 +35,7 @@ export async function healthRoutes(app: FastifyInstance) {
       checks: {
         postgres: dbHealthy ? 'healthy' : 'unhealthy',
         redis: redisHealthy ? 'healthy' : 'unhealthy',
+        migrations,
       },
     });
   });
@@ -54,6 +69,15 @@ export async function healthRoutes(app: FastifyInstance) {
         error: err instanceof Error ? err.message : 'Unknown error',
       };
     }
+
+    // Check Migrations
+    const migrationsStart = Date.now();
+    const migrations = await checkMigrations();
+    checks.migrations = {
+      status: migrations.status === 'ok' ? 'ok' : 'error',
+      latencyMs: Date.now() - migrationsStart,
+      ...(migrations.status === 'pending' ? { pending: migrations.pending } : {}),
+    };
 
     const allOk = Object.values(checks).every(c => c.status === 'ok');
     const statusCode = allOk ? 200 : 503;
