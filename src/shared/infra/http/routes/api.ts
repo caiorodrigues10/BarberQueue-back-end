@@ -41,7 +41,11 @@ import { membershipRoutes } from '@/modules/memberships/membership.routes'
 import { showcaseRoutes } from '@/modules/showcase/showcase.routes'
 import { catalogRoutes } from '@/modules/catalog/catalog.routes'
 import { clientPortalRoutes } from '@/modules/clientPortal/clientPortal.routes'
+import { organizationRoutes } from '@/modules/organizations/organization.routes'
 import { visitRoutes } from '@/modules/visits/visit.routes'
+import { resourceRoutes } from '@/modules/resources/resource.routes'
+import { profitRoutes } from '@/modules/profit/profit.routes'
+import { giftCardRoutes } from '@/modules/giftCards/giftCard.routes'
 
 export async function apiRoutes(app: FastifyInstance) {
 	await realtimeWsRoutes(app)
@@ -86,5 +90,9 @@ export async function apiRoutes(app: FastifyInstance) {
 	await showcaseRoutes(app)
 	await catalogRoutes(app)
 	await clientPortalRoutes(app)
+	await organizationRoutes(app)
 	await visitRoutes(app)
+	await profitRoutes(app)
+	await giftCardRoutes(app)
+	await resourceRoutes(app)
 }
