@@ -53,6 +53,12 @@ model User {
   depositConfirmations     AppointmentDeposit[]     @relation("DepositConfirmedBy")
   waitlistPreferredStaff   AppointmentWaitlistEntry[] @relation("WaitlistPreferredStaff")
   waitlistOfferStaff       AppointmentWaitlistOffer[] @relation("WaitlistOfferStaff")
+  showcaseEntriesShowcased ShowcaseEntry[]            @relation("ShowcaseStaff")
+  showcaseEntriesAuthorized ShowcaseEntry[]           @relation("ShowcaseAuthorizedBy")
+   tabClosedTabs            VisitTab[]                @relation("TabClosedBy")
+   confirmedLinks           ClientSalonLink[]         @relation("LinkConfirmedBy")
+   rejectedLinks            ClientSalonLink[]         @relation("LinkRejectedBy")
+   sentCareInstructions     ClientCareInstruction[]   @relation("CareInstructionSentBy")
 
   @@index([cpf])
   @@index([deletedAt])
@@ -304,6 +310,14 @@ model Barbershop {
   waitlistOffers           AppointmentWaitlistOffer[]
   membershipPlans          SalonMembershipPlan[]
   clientMemberships        ClientMembership[]
+  showcaseEntries          ShowcaseEntry[]
+  showcaseEvents           ShowcaseEvent[]
+  combos                   ServiceCombo[]
+  visits                   Visit[]
+   visitTabs                VisitTab[]
+   clientLinks              ClientSalonLink[]
+   careInstructionTemplates CareInstructionTemplate[]
+   clientCareInstructions   ClientCareInstruction[]
 
   @@index([approvalStatus])
   @@index([active])
@@ -473,6 +487,11 @@ model Service {
   depositOverrides  AppointmentDeposit[]
   membershipBenefits MembershipBenefit[]
   waitlistEntries   AppointmentWaitlistEntry[]
+  variations        ServiceVariation[]
+  addons            ServiceAddon[]
+  showcaseEntries   ShowcaseEntry[]
+  careInstructionTemplates CareInstructionTemplate[]
+  comboItems        ComboItem[]
 
   @@map("services")
 }
@@ -496,7 +515,7 @@ model QueueItem {
   completedBy            String?     @db.Uuid
   finalPrice             Float?      @db.Real
   paymentMethod          String?     @db.VarChar(50)
-  appointmentId          String?     @db.Uuid
+    appointmentId     String?             @unique     @db.Uuid
   /// Cliente do CRM. customerId continua sendo apenas a sessão/dispositivo público.
   clientId               String?     @db.Uuid
   responsibleQueueItemId String?     @db.Uuid
@@ -574,6 +593,7 @@ model Appointment {
   depositExpiry      DateTime?
   noShowMarkedAt     DateTime?
   noShowMarkedById   String?                        @db.Uuid
+  visitId            String?                        @db.Uuid
 
   barbershop      Barbershop         @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   service         Service            @relation(fields: [serviceId], references: [id], onDelete: Restrict)
@@ -589,11 +609,15 @@ model Appointment {
   deposit         AppointmentDeposit?
   waitlistOffers  AppointmentWaitlistOffer[]
   membershipUsages MembershipUsage[]
+  tabItem          TabItem?
+   visit            Visit?             @relation(fields: [visitId], references: [id], onDelete: SetNull)
+   careInstructions ClientCareInstruction[]
 
   @@index([barbershopId, staffId, date, status])
   @@index([clientId])
   @@index([clientPackageId])
   @@index([seriesId, occurrenceIndex])
+  @@index([visitId])
   @@map("appointments")
 }
 
@@ -645,11 +669,13 @@ model SalonClient {
   totalDepositsExpired   Int      @default(0)
   attendanceRate         Float?   @db.Real
   riskLevel              RiskLevel @default(NONE)
-  riskRestrictionUntil   DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+   riskRestrictionUntil   DateTime?
+   clientIdentityId      String?   @db.Uuid
+   createdAt            DateTime  @default(now())
+   updatedAt            DateTime  @updatedAt
 
-  barbershop             Barbershop             @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+   barbershop             Barbershop             @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+   clientIdentity        ClientIdentity?        @relation(fields: [clientIdentityId], references: [id], onDelete: SetNull)
   packages               ClientPackage[]
   appointments           Appointment[]
   queueItems             QueueItem[]            @relation("ClientQueueItems")
@@ -662,6 +688,8 @@ model SalonClient {
   loyaltyAccounts        LoyaltyAccount[]
   waitlistEntries        AppointmentWaitlistEntry[]
   clientMemberships      ClientMembership[]
+   visits                 Visit[]
+   clientLinks            ClientSalonLink[]
 
   @@unique([barbershopId, normalizedWhatsapp])
   @@index([barbershopId])
@@ -754,10 +782,11 @@ model FeedPost {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
-  barbershop     Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  author         User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  primaryMedia   PostMedia? @relation("PrimaryPostMedia", fields: [primaryMediaId], references: [id], onDelete: SetNull)
-  secondaryMedia PostMedia? @relation("SecondaryPostMedia", fields: [secondaryMediaId], references: [id], onDelete: SetNull)
+  barbershop     Barbershop     @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  author         User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  primaryMedia   PostMedia?     @relation("PrimaryPostMedia", fields: [primaryMediaId], references: [id], onDelete: SetNull)
+  secondaryMedia PostMedia?     @relation("SecondaryPostMedia", fields: [secondaryMediaId], references: [id], onDelete: SetNull)
+  showcaseEntry  ShowcaseEntry?
 
   @@index([barbershopId, status, scheduledFor])
   @@map("feed_posts")
@@ -2386,4 +2415,411 @@ model MembershipUsage {
 
   @@index([membershipId, benefitId])
   @@map("membership_usages")
+}
+
+// ─── Showcase ─────────────────────────────────────────────────────
+
+enum ShowcaseMode {
+  DIRECT_SERVICE
+  WHATSAPP_EVALUATION
+}
+
+enum ShowcaseStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+}
+
+enum ImageAuthorization {
+  TEAM_CONFIRMED
+  NO_IDENTIFIABLE_CLIENT
+  PENDING_REVIEW
+}
+
+enum ShowcaseEventType {
+  VIEW
+  CLICK_BOOK
+  CLICK_WHATSAPP
+  BOOKING_CREATED
+  APPOINTMENT_COMPLETED
+}
+
+model ShowcaseEntry {
+  id                String              @id @default(uuid()) @db.Uuid
+  barbershopId      String              @db.Uuid
+  postId            String              @unique @db.Uuid
+  title             String              @db.VarChar(200)
+  description       String?             @db.Text
+  altText           String?             @db.VarChar(300)
+  mode              ShowcaseMode        @default(DIRECT_SERVICE)
+  serviceId         String?             @db.Uuid
+  staffId           String?             @db.Uuid
+  position          Int                 @default(0)
+  status            ShowcaseStatus      @default(DRAFT)
+  imageAuthorization ImageAuthorization
+  authorizedById    String?             @db.Uuid
+  authorizedAt      DateTime?
+  authorizationNote String?             @db.VarChar(300)
+  publishedAt       DateTime?
+  hiddenAt          DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  barbershop    Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  post          FeedPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  service       Service?      @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  staff         User?         @relation("ShowcaseStaff", fields: [staffId], references: [id], onDelete: SetNull)
+  authorizedBy  User?         @relation("ShowcaseAuthorizedBy", fields: [authorizedById], references: [id], onDelete: SetNull)
+  events        ShowcaseEvent[]
+
+  @@index([barbershopId, status, position])
+  @@map("showcase_entries")
+}
+
+model ShowcaseEvent {
+  id                String              @id @default(uuid()) @db.Uuid
+  entryId           String              @db.Uuid
+  barbershopId      String              @db.Uuid
+  eventType         ShowcaseEventType
+  metadata          Json?
+  createdAt         DateTime            @default(now())
+
+  entry      ShowcaseEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  barbershop Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  @@index([entryId, createdAt])
+  @@index([barbershopId, createdAt])
+  @@map("showcase_events")
+}
+
+// ─── Advanced Catalog ─────────────────────────────────────────────
+
+model ServiceVariation {
+  id                String              @id @default(uuid()) @db.Uuid
+  serviceId         String              @db.Uuid
+  name              String              @db.VarChar(100)
+  price             Float               @db.Real
+  avgTimeMinutes    Int
+  isPublic          Boolean             @default(true)
+  sortOrder         Int                 @default(0)
+  createdAt         DateTime            @default(now())
+
+  service    Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  combos     ComboItem[]
+
+  @@index([serviceId, isPublic])
+  @@map("service_variations")
+}
+
+model ServiceAddon {
+  id                String              @id @default(uuid()) @db.Uuid
+  serviceId         String              @db.Uuid
+  name              String              @db.VarChar(100)
+  price             Float               @db.Real
+  avgTimeMinutes    Int                 @default(0)
+  isPublic          Boolean             @default(true)
+  sortOrder         Int                 @default(0)
+  createdAt         DateTime            @default(now())
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId, isPublic])
+  @@map("service_addons")
+}
+
+model ServiceCombo {
+  id                String              @id @default(uuid()) @db.Uuid
+  barbershopId      String              @db.Uuid
+  name              String              @db.VarChar(100)
+  description       String?             @db.Text
+  comboPrice        Float               @db.Real
+  isActive          Boolean             @default(true)
+  sortOrder         Int                 @default(0)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  barbershop Barbershop  @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  items      ComboItem[]
+
+  @@index([barbershopId, isActive])
+  @@map("service_combos")
+}
+
+model ComboItem {
+  id                String              @id @default(uuid()) @db.Uuid
+  comboId           String              @db.Uuid
+  serviceId         String              @db.Uuid
+  variationId       String?             @db.Uuid
+  sortOrder         Int                 @default(0)
+  originalPrice     Float               @db.Real
+  discountedPrice   Float               @db.Real
+
+  combo     ServiceCombo     @relation(fields: [comboId], references: [id], onDelete: Cascade)
+  service   Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  variation ServiceVariation? @relation(fields: [variationId], references: [id], onDelete: SetNull)
+
+  @@unique([comboId, serviceId])
+  @@map("combo_items")
+}
+
+// ─── Visit / Tab ──────────────────────────────────────────────────
+
+enum VisitStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+enum TabStatus {
+  OPEN
+  CLOSED
+  CANCELED
+}
+
+enum TabItemType {
+  SERVICE
+  ADDON
+  PRODUCT
+  COMBO
+  CREDIT
+  DEPOSIT
+}
+
+enum TabItemStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+model Visit {
+  id                String              @id @default(uuid()) @db.Uuid
+  barbershopId      String              @db.Uuid
+  clientId          String?             @db.Uuid
+  clientIdentityId  String?             @db.Uuid
+  status            VisitStatus         @default(PLANNED)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  barbershop    Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  client        SalonClient?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  appointments  Appointment[]
+  tab           VisitTab?
+
+  @@index([barbershopId, status])
+  @@map("visits")
+}
+
+model VisitTab {
+  id                String              @id @default(uuid()) @db.Uuid
+  visitId           String              @unique @db.Uuid
+  barbershopId      String              @db.Uuid
+  status            TabStatus           @default(OPEN)
+  subtotal          Decimal             @db.Decimal(12,2) @default(0)
+  discountAmount    Decimal             @db.Decimal(12,2) @default(0)
+  creditsApplied    Decimal             @db.Decimal(12,2) @default(0)
+  depositApplied    Decimal             @db.Decimal(12,2) @default(0)
+  totalReceived     Decimal             @db.Decimal(12,2) @default(0)
+  totalPending      Decimal             @db.Decimal(12,2) @default(0)
+  closedAt          DateTime?
+  closedById        String?             @db.Uuid
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  visit      Visit     @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  closedBy   User?     @relation("TabClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  items      TabItem[]
+  payments   TabPayment[]
+
+  @@index([barbershopId, status])
+  @@map("visit_tabs")
+}
+
+model TabItem {
+  id                String              @id @default(uuid()) @db.Uuid
+  tabId             String              @db.Uuid
+  type              TabItemType         @default(SERVICE)
+  serviceId         String?
+  variationId       String?
+  addonId           String?
+  productId         String?
+  comboId           String?
+  appointmentId     String?             @unique
+  quantity          Int                 @default(1)
+  unitPrice         Decimal             @db.Decimal(12,2)
+  discountPercent   Float               @default(0) @db.Real
+  discountAmount    Decimal             @db.Decimal(12,2) @default(0)
+  total             Decimal             @db.Decimal(12,2)
+  staffId           String?
+  status            TabItemStatus       @default(PENDING)
+  createdAt         DateTime            @default(now())
+
+  tab         VisitTab     @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([tabId])
+  @@map("tab_items")
+}
+
+model TabPayment {
+  id                String              @id @default(uuid()) @db.Uuid
+  tabId             String              @db.Uuid
+  amount            Decimal             @db.Decimal(12,2)
+  paymentMethod     String              @db.VarChar(30)
+  reference         String?             @db.VarChar(200)
+  recordedById      String?
+  createdAt         DateTime            @default(now())
+
+  tab VisitTab @relation(fields: [tabId], references: [id], onDelete: Cascade)
+
+  @@index([tabId])
+  @@map("tab_payments")
+}
+
+// ============================================================
+// Client Portal
+// ============================================================
+
+model ClientIdentity {
+  id                String              @id @default(uuid()) @db.Uuid
+  name              String              @db.VarChar(200)
+  phone             String              @unique @db.VarChar(20)
+  normalizedPhone   String              @unique @db.VarChar(15)
+  phoneVerified     Boolean             @default(false)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  sessions          ClientSession[]
+  otpChallenges     ClientOtpChallenge[]
+  salonLinks        ClientSalonLink[]
+  careInstructions  ClientCareInstruction[]
+  salonClients      SalonClient[]
+
+  @@index([normalizedPhone])
+  @@map("client_identities")
+}
+
+model ClientSession {
+  id                String              @id @default(uuid()) @db.Uuid
+  identityId        String              @db.Uuid
+  accessTokenHash   String              @db.VarChar(200)
+  refreshTokenHash  String              @db.VarChar(200)
+  ipAddress         String?             @db.VarChar(45)
+  userAgent         String?             @db.VarChar(500)
+  createdAt         DateTime            @default(now())
+  expiresAt         DateTime
+  revokedAt         DateTime?
+
+  identity ClientIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade)
+
+  @@index([identityId])
+  @@map("client_sessions")
+}
+
+model ClientOtpChallenge {
+  id                String              @id @default(uuid()) @db.Uuid
+  identityId        String?             @db.Uuid
+  phone             String              @db.VarChar(20)
+  normalizedPhone   String              @db.VarChar(15)
+  codeHash          String              @db.VarChar(200)
+  attempts          Int                 @default(0)
+  maxAttempts       Int                 @default(5)
+  status            OtpStatus           @default(PENDING)
+  ipAddress         String?             @db.VarChar(45)
+  createdAt         DateTime            @default(now())
+  expiresAt         DateTime
+  verifiedAt        DateTime?
+
+  identity ClientIdentity? @relation(fields: [identityId], references: [id], onDelete: SetNull)
+
+  @@index([normalizedPhone])
+  @@index([identityId])
+  @@map("client_otp_challenges")
+}
+
+model ClientSalonLink {
+  id                String              @id @default(uuid()) @db.Uuid
+  identityId        String              @db.Uuid
+  barbershopId      String              @db.Uuid
+  salonClientId     String?             @db.Uuid
+  status            SalonLinkStatus     @default(PENDING)
+  requestedAt       DateTime            @default(now())
+  confirmedAt       DateTime?
+  confirmedById     String?             @db.Uuid
+  rejectedAt        DateTime?
+  rejectedById      String?             @db.Uuid
+  rejectReason      String?             @db.VarChar(300)
+  revocationAt      DateTime?
+  marketingOptIn    Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  identity     ClientIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade)
+  barbershop   Barbershop     @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  salonClient  SalonClient?   @relation(fields: [salonClientId], references: [id], onDelete: SetNull)
+  confirmedBy  User?          @relation("LinkConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+  rejectedBy   User?          @relation("LinkRejectedBy", fields: [rejectedById], references: [id], onDelete: SetNull)
+
+  @@unique([identityId, barbershopId])
+  @@index([barbershopId])
+  @@map("client_salon_links")
+}
+
+model CareInstructionTemplate {
+  id                String              @id @default(uuid()) @db.Uuid
+  barbershopId      String              @db.Uuid
+  serviceId         String?             @db.Uuid
+  title             String              @db.VarChar(200)
+  content           String              @db.Text
+  version           Int                 @default(1)
+  isActive          Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  barbershop Barbershop              @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  service    Service?                @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  instructions ClientCareInstruction[]
+
+  @@index([barbershopId, isActive])
+  @@map("care_instruction_templates")
+}
+
+model ClientCareInstruction {
+  id                String              @id @default(uuid()) @db.Uuid
+  barbershopId      String              @db.Uuid
+  identityId        String              @db.Uuid
+  appointmentId     String?             @db.Uuid
+  templateId        String?             @db.Uuid
+  title             String              @db.VarChar(200)
+  content           String              @db.Text
+  templateVersion   Int
+  sentAt            DateTime            @default(now())
+  sentById          String?             @db.Uuid
+  readAt            DateTime?
+
+  barbershop Barbershop                @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  identity   ClientIdentity            @relation(fields: [identityId], references: [id], onDelete: Cascade)
+  appointment Appointment?             @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  template   CareInstructionTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  sentBy     User?                     @relation("CareInstructionSentBy", fields: [sentById], references: [id], onDelete: SetNull)
+
+  @@index([identityId, barbershopId])
+  @@index([barbershopId, sentAt])
+  @@map("client_care_instructions")
+}
+
+enum OtpStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+  FAILED
+}
+
+enum SalonLinkStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  REVOKED
 }
