@@ -106,7 +106,7 @@ export class GoalRepository {
     });
 
     const ranking = await Promise.all(
-      goals.map(async (goal) => {
+      goals.map(async (goal: (typeof goals)[number]) => {
         const progress = await this.getProgress(goal.id, barbershopId);
         return progress;
       })
