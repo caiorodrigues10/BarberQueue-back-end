@@ -1155,8 +1155,8 @@
     "semantic_hash": ""
   },
   "src/shared/infra/http/routes/api.ts": {
-    "mtime": 1788917241.5016544,
-    "ast_hash": "b705221687b1cdb0c2135fceacd9e7d4",
+    "mtime": 1788920083.1616628,
+    "ast_hash": "6b639cc4903c5ff377dc3a6e37c071ac",
     "semantic_hash": ""
   },
   "src/shared/infra/http/routes/appointments.routes.ts": {
@@ -1250,8 +1250,8 @@
     "semantic_hash": ""
   },
   "src/shared/infra/http/server.ts": {
-    "mtime": 1788361004.1738448,
-    "ast_hash": "c58ce0009bf0d461494fe32f1fa3d4af",
+    "mtime": 1788920100.8811018,
+    "ast_hash": "f7683d10221e9c4f237dd901e2078bc2",
     "semantic_hash": ""
   },
   "src/shared/infra/queue/emailQueue.ts": {
@@ -3057,6 +3057,126 @@
   "src/shared/providers/ml/enhancedDemandPredictor.ts": {
     "mtime": 1788917450.4754398,
     "ast_hash": "71901fcf900adb37e722a0518ad82905",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260909040000_add_rls_v11_v12/migration.sql": {
+    "mtime": 1788918398.4088578,
+    "ast_hash": "047191974cd6ad8550a263f6400a1455",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260910000000_add_deposit_policy/migration.sql": {
+    "mtime": 1788919745.9153986,
+    "ast_hash": "7886ff40d7555f6aead022021e17688c",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260910000001_add_appointment_deposits/migration.sql": {
+    "mtime": 1788919933.9065988,
+    "ast_hash": "e972efaf30e69d8bbcf65d67c8904529",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260910000002_add_waitlist/migration.sql": {
+    "mtime": 1788919752.2284434,
+    "ast_hash": "89451002c6846bbbb95ddad54c8f760d",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260910000003_add_memberships/migration.sql": {
+    "mtime": 1788919759.4942493,
+    "ast_hash": "dddd6edfd7fe0de06f17e705151f44fc",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260910000004_extend_appointments_and_clients/migration.sql": {
+    "mtime": 1788919761.1597817,
+    "ast_hash": "76e40cab4e4f5f89dd17c7ecc37290d0",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260910000005_add_rls_v13/migration.sql": {
+    "mtime": 1788919764.9659927,
+    "ast_hash": "990e27c101e8a7ebb6c040704e3a6b2b",
+    "semantic_hash": ""
+  },
+  "src/modules/deposits/deposit.routes.ts": {
+    "mtime": 1788919904.6245534,
+    "ast_hash": "bf836b955363b22edcd7701fe790289b",
+    "semantic_hash": ""
+  },
+  "src/modules/deposits/depositController.ts": {
+    "mtime": 1788919901.385788,
+    "ast_hash": "1fd9238694518e0a21e617823e13fdb3",
+    "semantic_hash": ""
+  },
+  "src/modules/deposits/depositPolicySchema.ts": {
+    "mtime": 1788919845.2014687,
+    "ast_hash": "4d622c88587c2b25558bf5ee79f02e67",
+    "semantic_hash": ""
+  },
+  "src/modules/deposits/depositRepository.ts": {
+    "mtime": 1788919885.4021685,
+    "ast_hash": "605e470c60654cd10b8ab1b1f64c3aa9",
+    "semantic_hash": ""
+  },
+  "src/modules/deposits/depositUseCases.ts": {
+    "mtime": 1788920313.3924992,
+    "ast_hash": "c507709eb6d411ae0cf3695cc0fe3807",
+    "semantic_hash": ""
+  },
+  "src/modules/deposits/jobs/depositExpirationJob.ts": {
+    "mtime": 1788919907.5162387,
+    "ast_hash": "4300074d1362aa5cdba701a0961cae16",
+    "semantic_hash": ""
+  },
+  "src/modules/memberships/membership.routes.ts": {
+    "mtime": 1788920054.5441735,
+    "ast_hash": "b481431911e4a989b935cd817578690e",
+    "semantic_hash": ""
+  },
+  "src/modules/memberships/membershipController.ts": {
+    "mtime": 1788920061.8775165,
+    "ast_hash": "dfe86cd27fe35a6e24755cbf9d50a3d1",
+    "semantic_hash": ""
+  },
+  "src/modules/memberships/membershipRepository.ts": {
+    "mtime": 1788920384.9686935,
+    "ast_hash": "292a13c45e9b2de847004a40bc087bdc",
+    "semantic_hash": ""
+  },
+  "src/modules/memberships/membershipSchema.ts": {
+    "mtime": 1788919976.7184734,
+    "ast_hash": "37ffb1ec128eb589caaab5df9c4dcaf6",
+    "semantic_hash": ""
+  },
+  "src/modules/memberships/membershipUseCases.ts": {
+    "mtime": 1788920343.4661274,
+    "ast_hash": "9d78e0f3c42e891fa93cc2f37f3f081f",
+    "semantic_hash": ""
+  },
+  "src/modules/waitlist/jobs/waitlistExpirationJob.ts": {
+    "mtime": 1788919964.5450442,
+    "ast_hash": "9b4a11edae95644c642605d242cb9ff0",
+    "semantic_hash": ""
+  },
+  "src/modules/waitlist/waitlist.routes.ts": {
+    "mtime": 1788919960.097519,
+    "ast_hash": "1ea216a9d7cf11fa6c8cac4a43bc4315",
+    "semantic_hash": ""
+  },
+  "src/modules/waitlist/waitlistController.ts": {
+    "mtime": 1788919955.2146835,
+    "ast_hash": "5e60a766a8d82866939ccd6966c26bf5",
+    "semantic_hash": ""
+  },
+  "src/modules/waitlist/waitlistRepository.ts": {
+    "mtime": 1788920316.3077528,
+    "ast_hash": "b5e8d36391cddf0247da1649f96f7891",
+    "semantic_hash": ""
+  },
+  "src/modules/waitlist/waitlistSchema.ts": {
+    "mtime": 1788919916.2588534,
+    "ast_hash": "e3fed7f2a722c395d20d2fb87f8055a4",
+    "semantic_hash": ""
+  },
+  "src/modules/waitlist/waitlistUseCases.ts": {
+    "mtime": 1788919941.416042,
+    "ast_hash": "db737685627eca0af1f2291e5c55a4c0",
     "semantic_hash": ""
   }
 }

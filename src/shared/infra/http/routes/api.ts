@@ -35,6 +35,9 @@ import { analyticsRoutes } from '@/modules/analytics/routes/analytics.routes'
 import { cashMovementRoutes } from '@/modules/cash/cashMovement.routes'
 import { loyaltyRoutes } from '@/modules/loyalty/loyalty.routes'
 import { goalRoutes } from '@/modules/goals/goal.routes'
+import { depositRoutes } from '@/modules/deposits/deposit.routes'
+import { waitlistRoutes } from '@/modules/waitlist/waitlist.routes'
+import { membershipRoutes } from '@/modules/memberships/membership.routes'
 
 export async function apiRoutes(app: FastifyInstance) {
 	await realtimeWsRoutes(app)
@@ -73,4 +76,7 @@ export async function apiRoutes(app: FastifyInstance) {
 	await cashMovementRoutes(app)
 	await loyaltyRoutes(app)
 	await goalRoutes(app)
+	await depositRoutes(app)
+	await waitlistRoutes(app)
+	await membershipRoutes(app)
 }

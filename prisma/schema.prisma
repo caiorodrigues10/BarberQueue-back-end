@@ -50,6 +50,9 @@ model User {
   appointmentSeriesCreated AppointmentSeries[]      @relation("AppointmentSeriesCreatedBy")
   clientReviewsAsStaff     ClientReview[]           @relation("ClientReviewStaff")
   professionalGoals        ProfessionalGoal[]
+  depositConfirmations     AppointmentDeposit[]     @relation("DepositConfirmedBy")
+  waitlistPreferredStaff   AppointmentWaitlistEntry[] @relation("WaitlistPreferredStaff")
+  waitlistOfferStaff       AppointmentWaitlistOffer[] @relation("WaitlistOfferStaff")
 
   @@index([cpf])
   @@index([deletedAt])
@@ -296,6 +299,11 @@ model Barbershop {
   loyaltyProgram           LoyaltyProgram?
   loyaltyAccounts          LoyaltyAccount[]
   professionalGoals        ProfessionalGoal[]
+  appointmentDeposits      AppointmentDeposit[]
+  waitlistEntries          AppointmentWaitlistEntry[]
+  waitlistOffers           AppointmentWaitlistOffer[]
+  membershipPlans          SalonMembershipPlan[]
+  clientMemberships        ClientMembership[]
 
   @@index([approvalStatus])
   @@index([active])
@@ -346,17 +354,32 @@ model Schedule {
 }
 
 model AppointmentPolicy {
-  id                      String   @id @default(uuid()) @db.Uuid
-  barbershopId            String   @unique @db.Uuid
-  bookingNoticeMinutes    Int      @default(60)
-  cancelNoticeMinutes     Int      @default(120)
-  rescheduleNoticeMinutes Int      @default(120)
-  bookingHorizonDays      Int      @default(60)
-  allowPublicCancellation Boolean  @default(true)
-  allowPublicReschedule   Boolean  @default(true)
-  requestReview           Boolean  @default(true)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  id                         String              @id @default(uuid()) @db.Uuid
+  barbershopId               String              @unique @db.Uuid
+  bookingNoticeMinutes       Int                 @default(60)
+  cancelNoticeMinutes        Int                 @default(120)
+  rescheduleNoticeMinutes    Int                 @default(120)
+  bookingHorizonDays         Int                 @default(60)
+  allowPublicCancellation    Boolean             @default(true)
+  allowPublicReschedule      Boolean             @default(true)
+  requestReview              Boolean             @default(true)
+  depositRequired            DepositRequiredMode @default(OFF)
+  depositDefaultPercent      Float               @default(30) @db.Real
+  depositDefaultAmount       Decimal?            @db.Decimal(12,2)
+  depositConfirmHours        Int                 @default(2)
+  depositInstructions        String?             @db.Text
+  depositPixKey              String?             @db.VarChar(100)
+  depositRefundRule          RefundRule          @default(FULL_REFUND)
+  noShowDepositRule          RefundRule          @default(NO_REFUND)
+  maxReschedules             Int                 @default(2)
+  rescheduleTransferDeposit  Boolean             @default(true)
+  lateToleranceMinutes       Int                 @default(15)
+  riskThresholdNoShows       Int                 @default(3)
+  riskBlockDurationDays      Int                 @default(30)
+  riskReinforcedDeposit      Boolean             @default(false)
+  riskManualApproval         Boolean             @default(false)
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime            @updatedAt
 
   barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
 
@@ -447,6 +470,9 @@ model Service {
   servicePackages   ServicePackage[]
   clientPackages    ClientPackage[]
   commissionEntries CommissionEntry[]
+  depositOverrides  AppointmentDeposit[]
+  membershipBenefits MembershipBenefit[]
+  waitlistEntries   AppointmentWaitlistEntry[]
 
   @@map("services")
 }
@@ -544,6 +570,10 @@ model Appointment {
   cancellationReason  String?                        @db.VarChar(300)
   seriesId            String?                        @db.Uuid
   occurrenceIndex     Int?
+  depositStatus      DepositStatus?
+  depositExpiry      DateTime?
+  noShowMarkedAt     DateTime?
+  noShowMarkedById   String?                        @db.Uuid
 
   barbershop      Barbershop         @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   service         Service            @relation(fields: [serviceId], references: [id], onDelete: Restrict)
@@ -556,6 +586,9 @@ model Appointment {
   review          ClientReview?
   queueItems      QueueItem[]
   retailSales     RetailSale[]
+  deposit         AppointmentDeposit?
+  waitlistOffers  AppointmentWaitlistOffer[]
+  membershipUsages MembershipUsage[]
 
   @@index([barbershopId, staffId, date, status])
   @@index([clientId])
@@ -605,6 +638,14 @@ model SalonClient {
   marketingOptIn       Boolean   @default(false)
   marketingOptInAt     DateTime?
   marketingOptInSource String?   @db.VarChar(80)
+  totalAppointments      Int      @default(0)
+  totalCancellations     Int      @default(0)
+  totalLateCancellations Int      @default(0)
+  totalNoShows           Int      @default(0)
+  totalDepositsExpired   Int      @default(0)
+  attendanceRate         Float?   @db.Real
+  riskLevel              RiskLevel @default(NONE)
+  riskRestrictionUntil   DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -619,6 +660,8 @@ model SalonClient {
   reviews                ClientReview[]
   retailSales            RetailSale[]
   loyaltyAccounts        LoyaltyAccount[]
+  waitlistEntries        AppointmentWaitlistEntry[]
+  clientMemberships      ClientMembership[]
 
   @@unique([barbershopId, normalizedWhatsapp])
   @@index([barbershopId])
@@ -2072,4 +2115,275 @@ model ProfessionalGoal {
 
   @@unique([barbershopId, professionalId, metric, startDate])
   @@map("professional_goals")
+}
+
+enum DepositRequiredMode {
+  OFF
+  OPTIONAL
+  MANDATORY
+}
+
+enum DepositStatus {
+  PENDING
+  CONFIRMED
+  WAIVED
+  EXPIRED
+  APPLIED
+  REFUNDED
+  FORFEITED
+  CANCELED
+}
+
+enum RefundRule {
+  FULL_REFUND
+  PARTIAL_REFUND
+  CREDIT_ONLY
+  NO_REFUND
+}
+
+enum WaitlistStatus {
+  WAITING
+  OFFERED
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  BOOKED
+  CANCELED
+}
+
+enum WaitlistOrigin {
+  PUBLIC
+  STAFF
+  SYSTEM
+}
+
+enum WaitlistOfferResponse {
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum MembershipCycleType {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum BenefitType {
+  SESSIONS
+  PERCENT_DISCOUNT
+  FIXED_DISCOUNT
+  SPECIAL_PRICE
+  PRIORITY_BOOKING
+  EXTRA_CASHBACK
+  MONTHLY_PRODUCT
+  BIRTHDAY_BENEFIT
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  PAST_DUE
+  PAUSED
+  CANCELED
+  EXPIRED
+}
+
+enum CycleStatus {
+  PENDING
+  PAID
+  OVERDUE
+  WAIVED
+}
+
+enum RiskLevel {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  BLOCKED
+}
+
+model AppointmentDeposit {
+  id                String              @id @default(uuid()) @db.Uuid
+  barbershopId      String              @db.Uuid
+  appointmentId     String              @unique @db.Uuid
+  serviceId         String?             @db.Uuid
+  expectedAmount    Decimal             @db.Decimal(12,2)
+  confirmedAmount   Decimal?            @db.Decimal(12,2)
+  status            DepositStatus       @default(PENDING)
+  paymentMethod     String?             @db.VarChar(30)
+  confirmationNote  String?             @db.Text
+  confirmedById     String?             @db.Uuid
+  confirmedAt       DateTime?
+  expiresAt         DateTime
+  refundRule        RefundRule          @default(FULL_REFUND)
+  idempotencyKey    String?             @unique @db.VarChar(100)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  barbershop  Barbershop  @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  service     Service?     @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  confirmedBy User?       @relation("DepositConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+
+  @@index([barbershopId, status])
+  @@index([barbershopId, status, expiresAt])
+  @@map("appointment_deposits")
+}
+
+model AppointmentWaitlistEntry {
+  id                String              @id @default(uuid()) @db.Uuid
+  barbershopId      String              @db.Uuid
+  clientId          String?             @db.Uuid
+  customerName      String              @db.VarChar(200)
+  whatsapp          String              @db.VarChar(20)
+  serviceId         String?             @db.Uuid
+  preferredStaffId  String?             @db.Uuid
+  dateFrom          DateTime            @db.Date
+  dateTo            DateTime            @db.Date
+  preferredPeriods  String[]            @default([])
+  flexibilityMinutes Int                @default(30)
+  priority          Int                 @default(0)
+  origin            WaitlistOrigin      @default(PUBLIC)
+  status            WaitlistStatus      @default(WAITING)
+  validUntil        DateTime
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  barbershop     Barbershop  @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  client         SalonClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  service        Service?     @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  preferredStaff User?        @relation("WaitlistPreferredStaff", fields: [preferredStaffId], references: [id], onDelete: SetNull)
+  offers         AppointmentWaitlistOffer[]
+
+  @@index([barbershopId, status])
+  @@index([barbershopId, status, serviceId])
+  @@map("appointment_waitlist_entries")
+}
+
+model AppointmentWaitlistOffer {
+  id                String              @id @default(uuid()) @db.Uuid
+  entryId           String              @db.Uuid
+  barbershopId      String              @db.Uuid
+  offeredDate       DateTime            @db.Date
+  offeredTime       String              @db.VarChar(5)
+  staffId           String?             @db.Uuid
+  token             String              @unique @db.VarChar(100)
+  expiresAt         DateTime
+  respondedAt       DateTime?
+  response          WaitlistOfferResponse?
+  appointmentId     String?             @db.Uuid
+  createdAt         DateTime            @default(now())
+
+  entry      AppointmentWaitlistEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  barbershop Barbershop               @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  staff      User?                    @relation("WaitlistOfferStaff", fields: [staffId], references: [id], onDelete: SetNull)
+  appointment Appointment?            @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([barbershopId, expiresAt])
+  @@index([token])
+  @@map("appointment_waitlist_offers")
+}
+
+model SalonMembershipPlan {
+  id                String              @id @default(uuid()) @db.Uuid
+  barbershopId      String              @db.Uuid
+  name              String              @db.VarChar(100)
+  description       String?             @db.Text
+  price             Decimal             @db.Decimal(12,2)
+  billingCycle      MembershipCycleType @default(MONTHLY)
+  isActive          Boolean             @default(true)
+  maxMembers        Int?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  barbershop        Barbershop        @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  benefits          MembershipBenefit[]
+  clientMemberships ClientMembership[]
+
+  @@index([barbershopId, isActive])
+  @@map("salon_membership_plans")
+}
+
+model MembershipBenefit {
+  id                String              @id @default(uuid()) @db.Uuid
+  planId            String              @db.Uuid
+  serviceId         String?             @db.Uuid
+  type              BenefitType
+  quantity          Int                 @default(1)
+  discountPercent   Float?              @db.Real
+  discountAmount    Decimal?            @db.Decimal(12,2)
+  description       String              @db.VarChar(200)
+  createdAt         DateTime            @default(now())
+
+  plan    SalonMembershipPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  service Service?            @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  usages  MembershipUsage[]
+
+  @@index([planId])
+  @@map("membership_benefits")
+}
+
+model ClientMembership {
+  id                String              @id @default(uuid()) @db.Uuid
+  barbershopId      String              @db.Uuid
+  planId            String              @db.Uuid
+  clientId          String              @db.Uuid
+  status            MembershipStatus    @default(PENDING)
+  startDate         DateTime            @db.Date
+  currentPeriodEnd  DateTime            @db.Date
+  cancelDate        DateTime?
+  pauseDate         DateTime?
+  resumeDate        DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  barbershop Barbershop           @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  plan       SalonMembershipPlan  @relation(fields: [planId], references: [id], onDelete: Restrict)
+  client     SalonClient          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  cycles     ClientMembershipCycle[]
+  usages     MembershipUsage[]
+
+  @@unique([barbershopId, clientId, planId])
+  @@index([barbershopId, status])
+  @@index([clientId])
+  @@map("client_memberships")
+}
+
+model ClientMembershipCycle {
+  id                String              @id @default(uuid()) @db.Uuid
+  membershipId      String              @db.Uuid
+  periodStart       DateTime            @db.Date
+  periodEnd         DateTime            @db.Date
+  dueDate           DateTime            @db.Date
+  amount            Decimal             @db.Decimal(12,2)
+  status            CycleStatus         @default(PENDING)
+  paidAt            DateTime?
+  paymentMethod     String?             @db.VarChar(30)
+  idempotencyKey    String?             @unique @db.VarChar(100)
+  createdAt         DateTime            @default(now())
+
+  membership ClientMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([membershipId, dueDate])
+  @@index([status, dueDate])
+  @@map("membership_cycles")
+}
+
+model MembershipUsage {
+  id                String              @id @default(uuid()) @db.Uuid
+  membershipId      String              @db.Uuid
+  benefitId         String              @db.Uuid
+  appointmentId     String?             @db.Uuid
+  usedAt            DateTime            @default(now())
+  quantity          Int                 @default(1)
+  idempotencyKey    String?             @unique @db.VarChar(100)
+
+  membership ClientMembership    @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  benefit    MembershipBenefit    @relation(fields: [benefitId], references: [id], onDelete: Restrict)
+  appointment Appointment?        @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([membershipId, benefitId])
+  @@map("membership_usages")
 }

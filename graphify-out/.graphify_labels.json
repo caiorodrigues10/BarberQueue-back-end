@@ -236,6 +236,18 @@
   "234": "typescript",
   "235": "DeleteAvatarUseCase",
   "236": "DailyCloseoutController",
+  "237": "GetWeatherForecastUseCase.ts",
+  "238": "CrmController.ts",
+  "239": ".execute",
   "240": "subscribe.spec.ts",
-  "241": "@opentelemetry/instrumentation-fastify"
+  "241": "@opentelemetry/instrumentation-fastify",
+  "242": "ChargeTrialEndedSubscriptionsUseCase",
+  "243": "paymentProviderSnapshot.ts",
+  "244": "GetCrmForecastUseCase",
+  "245": "subscriptionAccess.ts",
+  "246": "RecordActivationEventUseCase",
+  "247": "reconciliationService.ts",
+  "248": "@fastify/cors",
+  "249": "ExportFinancialDataUseCase",
+  "250": "ListSubscriptionsController"
 }

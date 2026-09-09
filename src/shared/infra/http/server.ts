@@ -10,6 +10,8 @@ import { scheduleCleanOldLogs } from "@/shared/infra/cron/cleanOldLogs.cron";
 import { scheduleDailyWeatherLog } from "@/shared/infra/cron/dailyWeatherLog.cron";
 import { scheduleCleanupExpiredPix } from "@/shared/infra/cron/cleanupExpiredPix.cron";
 import { scheduleRefundReconciliation } from "@/shared/infra/cron/refundReconciliation.cron";
+import { scheduleDepositExpiration } from "@/modules/deposits/jobs/depositExpirationJob";
+import { scheduleWaitlistExpiration } from "@/modules/waitlist/jobs/waitlistExpirationJob";
 import {
   startWhatsAppWorker,
   startEmailWorker,
@@ -128,6 +130,8 @@ function registerCrons(log: CronLog): void {
     ['daily weather log', () => scheduleDailyWeatherLog(log)],
     ['limpeza de QR Codes PIX', () => scheduleCleanupExpiredPix(log)],
     ['reconciliação de estornos', () => scheduleRefundReconciliation(log)],
+    ['expiração de depósitos', () => scheduleDepositExpiration(log)],
+    ['expiração de waitlist', () => scheduleWaitlistExpiration(log)],
   ] as const;
 
   for (const [name, startJob] of jobs) {
