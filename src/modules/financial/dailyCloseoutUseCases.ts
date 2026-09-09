@@ -21,7 +21,7 @@ export class DailyCloseoutUseCases {
     const endOfDay = new Date(normalizedDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const [expenses, commissions, productSales, fiados] = await Promise.all([
+    const [expenses, commissions, productSales, fiados, cashMovements] = await Promise.all([
       prisma.expense.aggregate({
         where: {
           barbershopId,
@@ -51,6 +51,12 @@ export class DailyCloseoutUseCases {
         },
         select: { originalAmount: true, paidAmount: true },
       }),
+      prisma.cashMovement.findMany({
+        where: {
+          barbershopId,
+          createdAt: { gte: startOfDay, lte: endOfDay },
+        },
+      }),
     ]);
 
     const aggregatedExpenses = expenses._sum.amount ?? 0;
@@ -64,13 +70,42 @@ export class DailyCloseoutUseCases {
       aggregatedFiadoPaid += f.paidAmount;
     }
 
+    const positiveTypes = ["SERVICE_SALE", "PRODUCT_SALE", "PACKAGE_SALE", "FIADO_PAYMENT"];
+
+    let cashFromMovements = 0;
+    let pixFromMovements = 0;
+    let cardFromMovements = 0;
+    let fiadoFromMovements = 0;
+
+    for (const m of cashMovements) {
+      const amt = Number(m.amount);
+      const isIn = positiveTypes.includes(m.type);
+      const signed = isIn ? amt : -amt;
+
+      switch (m.paymentMethod) {
+        case "CASH":
+          cashFromMovements += signed;
+          break;
+        case "PIX":
+          pixFromMovements += signed;
+          break;
+        case "CREDIT_CARD":
+        case "DEBIT_CARD":
+          cardFromMovements += signed;
+          break;
+        case "FIADO":
+          fiadoFromMovements += signed;
+          break;
+      }
+    }
+
     const data: DailyCloseoutData = {
       balanceOpen: payload.balanceOpen,
-      cashReceived: payload.cashReceived,
-      pixReceived: payload.pixReceived,
-      cardReceived: payload.cardReceived,
-      fiadoCreated: aggregatedFiadoCreated,
-      fiadoPaid: aggregatedFiadoPaid,
+      cashReceived: payload.cashReceived || cashFromMovements,
+      pixReceived: payload.pixReceived || pixFromMovements,
+      cardReceived: payload.cardReceived || cardFromMovements,
+      fiadoCreated: aggregatedFiadoCreated || (fiadoFromMovements > 0 ? fiadoFromMovements : 0),
+      fiadoPaid: aggregatedFiadoPaid || (fiadoFromMovements < 0 ? Math.abs(fiadoFromMovements) : 0),
       expenses: aggregatedExpenses,
       commissions: aggregatedCommissions,
       productSales: aggregatedProductSales,
@@ -97,7 +132,7 @@ export class DailyCloseoutUseCases {
     const endOfDay = new Date(normalizedDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const [expenses, commissions, productSales, fiados] = await Promise.all([
+    const [expenses, commissions, productSales, fiados, cashMovements] = await Promise.all([
       prisma.expense.aggregate({
         where: {
           barbershopId,
@@ -127,6 +162,12 @@ export class DailyCloseoutUseCases {
         },
         select: { originalAmount: true, paidAmount: true },
       }),
+      prisma.cashMovement.findMany({
+        where: {
+          barbershopId,
+          createdAt: { gte: startOfDay, lte: endOfDay },
+        },
+      }),
     ]);
 
     const aggregatedExpenses = expenses._sum.amount ?? 0;
@@ -140,17 +181,41 @@ export class DailyCloseoutUseCases {
       aggregatedFiadoPaid += f.paidAmount;
     }
 
+    const positiveTypes = ["SERVICE_SALE", "PRODUCT_SALE", "PACKAGE_SALE", "FIADO_PAYMENT"];
+    let cashFromMovements = 0;
+    let pixFromMovements = 0;
+    let cardFromMovements = 0;
+
+    for (const m of cashMovements) {
+      const amt = Number(m.amount);
+      const isIn = positiveTypes.includes(m.type);
+      const signed = isIn ? amt : -amt;
+
+      switch (m.paymentMethod) {
+        case "CASH":
+          cashFromMovements += signed;
+          break;
+        case "PIX":
+          pixFromMovements += signed;
+          break;
+        case "CREDIT_CARD":
+        case "DEBIT_CARD":
+          cardFromMovements += signed;
+          break;
+      }
+    }
+
     const autoCalculated = await this.repo.upsert(barbershopId, normalizedDate, {
       balanceOpen: 0,
-      cashReceived: 0,
-      pixReceived: 0,
-      cardReceived: 0,
+      cashReceived: cashFromMovements,
+      pixReceived: pixFromMovements,
+      cardReceived: cardFromMovements,
       fiadoCreated: aggregatedFiadoCreated,
       fiadoPaid: aggregatedFiadoPaid,
       expenses: aggregatedExpenses,
       commissions: aggregatedCommissions,
       productSales: aggregatedProductSales,
-      notes: "Auto-calculated (not yet closed)",
+      notes: "Auto-calculated from CashMovement records",
     });
 
     return autoCalculated;

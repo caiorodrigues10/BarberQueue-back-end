@@ -233,5 +233,8 @@
   "231": "ioredis",
   "232": "@opentelemetry/exporter-prometheus",
   "233": "@testcontainers/postgresql",
-  "234": "typescript"
+  "234": "typescript",
+  "235": "DeleteAvatarUseCase",
+  "236": "DailyCloseoutController",
+  "237": "@fastify/cors"
 }
